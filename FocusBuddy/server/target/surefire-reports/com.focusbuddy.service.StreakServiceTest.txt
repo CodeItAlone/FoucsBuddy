@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.focusbuddy.service.StreakServiceTest
+-------------------------------------------------------------------------------
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.672 s -- in com.focusbuddy.service.StreakServiceTest
