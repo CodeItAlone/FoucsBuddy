@@ -1,8 +1,8 @@
-# IRONCLAD
+# FocusBuddy
 
 **Social Accountability Engine**
 
-IRONCLAD is a brutal, execution-focused productivity app. It uses social pressure and strict rules (no pausing, streak decay) to force consistency.
+FocusBuddy is a brutal, execution-focused productivity app. It uses social pressure and strict rules (no pausing, streak decay) to force consistency.
 
 ## Project Structure
 
