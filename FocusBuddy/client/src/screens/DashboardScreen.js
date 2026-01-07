@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -13,7 +13,10 @@ import { useTheme } from '../services/ThemeContext';
 import { useAuth } from '../services/AuthContext';
 import Sidebar from '../components/Sidebar';
 import InlineSession from '../components/InlineSession';
-import SquadSidebar from '../components/SquadSidebar';
+import LiveSquadWidget from '../components/LiveSquadWidget';
+import QuickActionHeader from '../components/QuickActionHeader';
+import GroupMilestoneToast from '../components/GroupMilestoneToast';
+import CompactDailySummary from '../components/CompactDailySummary';
 import InteractiveTimeline from '../components/TimelineChart';
 import ProductivityHeatmap from '../components/ProductivityHeatmap';
 import LiveLeaderboard from '../components/LiveLeaderboard';
@@ -32,6 +35,18 @@ export default function DashboardScreen({ navigation }) {
     const { width } = useWindowDimensions();
     const [activeView, setActiveView] = useState('Day');
 
+    // Session state for header integration
+    const [isSessionActive, setIsSessionActive] = useState(false);
+    const [sessionTimeLeft, setSessionTimeLeft] = useState(0);
+    const [sessionTaskName, setSessionTaskName] = useState('');
+    const [showSetupForm, setShowSetupForm] = useState(false);
+
+    // Toast state
+    const [showMilestoneToast, setShowMilestoneToast] = useState(false);
+    const [milestoneData, setMilestoneData] = useState({ name: '', avatar: '' });
+
+    const inlineSessionRef = useRef(null);
+
     // Responsive breakpoints
     const isDesktop = width >= 1200;
     const isTablet = width >= 768 && width < 1200;
@@ -40,13 +55,42 @@ export default function DashboardScreen({ navigation }) {
     const styles = createStyles(theme, isDesktop, isTablet, isMobile);
 
     const handleNavItemPress = (itemId) => {
-        // Navigation handled by sidebar, session is now inline
         console.log('Nav item pressed:', itemId);
     };
 
-    const handleSessionChange = (status) => {
-        console.log('Session status:', status);
+    const handleSessionChange = useCallback((status, data) => {
+        console.log('Session status:', status, data);
+        if (status === 'active') {
+            setIsSessionActive(true);
+            setSessionTaskName(data?.taskName || '');
+        } else if (status === 'ended' || status === 'completed') {
+            setIsSessionActive(false);
+            setSessionTaskName('');
+        }
+    }, []);
+
+    const handleStartSessionFromHeader = () => {
+        setShowSetupForm(true);
     };
+
+    const handleEndSessionFromHeader = () => {
+        // This would trigger the InlineSession to end
+        setIsSessionActive(false);
+    };
+
+    const handleHighFive = () => {
+        console.log('High five sent!');
+        // In real app, send API request
+    };
+
+    // Demo: Show milestone toast after 10 seconds
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setMilestoneData({ name: 'Alex Chen', avatar: '👨‍💻' });
+            setShowMilestoneToast(true);
+        }, 10000);
+        return () => clearTimeout(timer);
+    }, []);
 
     return (
         <View style={styles.container}>
@@ -62,86 +106,115 @@ export default function DashboardScreen({ navigation }) {
             )}
 
             {/* Main Content Area */}
-            <ScrollView
-                style={styles.mainContent}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.mainContentContainer}
-            >
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        {isMobile && (
-                            <TouchableOpacity style={styles.menuButton} onPress={toggleTheme}>
-                                <Text style={styles.menuButtonText}>{isDarkMode ? '☀️' : '🌙'}</Text>
-                            </TouchableOpacity>
-                        )}
-                        <View>
-                            <Text style={styles.greeting}>
-                                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.handle || 'Champion'} 👋
-                            </Text>
-                            <Text style={styles.dateText}>{formatDate()}</Text>
+            <View style={styles.mainWrapper}>
+                {/* Sticky Quick Action Header */}
+                <QuickActionHeader
+                    isSessionActive={isSessionActive}
+                    timeLeft={sessionTimeLeft}
+                    taskName={sessionTaskName}
+                    onStartSession={handleStartSessionFromHeader}
+                    onEndSession={handleEndSessionFromHeader}
+                />
+
+                <ScrollView
+                    style={styles.mainContent}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.mainContentContainer}
+                >
+                    {/* Greeting Header */}
+                    <View style={styles.header}>
+                        <View style={styles.headerLeft}>
+                            {isMobile && (
+                                <TouchableOpacity style={styles.menuButton} onPress={toggleTheme}>
+                                    <Text style={styles.menuButtonText}>{isDarkMode ? '☀️' : '🌙'}</Text>
+                                </TouchableOpacity>
+                            )}
+                            <View>
+                                <Text style={styles.greeting}>
+                                    Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.handle || 'Champion'} 👋
+                                </Text>
+                                <Text style={styles.dateText}>{formatDate()}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.headerRight}>
+                            <View style={styles.viewToggle}>
+                                {['Day', 'Week', 'Month'].map((view) => (
+                                    <TouchableOpacity
+                                        key={view}
+                                        style={[styles.viewButton, activeView === view && styles.viewButtonActive]}
+                                        onPress={() => setActiveView(view)}
+                                    >
+                                        <Text style={[styles.viewButtonText, activeView === view && styles.viewButtonTextActive]}>
+                                            {view}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
                     </View>
 
-                    <View style={styles.headerRight}>
-                        <View style={styles.viewToggle}>
-                            {['Day', 'Week', 'Month'].map((view) => (
+                    {/* Inline Session Component */}
+                    <InlineSession
+                        ref={inlineSessionRef}
+                        onSessionChange={handleSessionChange}
+                        showSetup={showSetupForm}
+                        onSetupClose={() => setShowSetupForm(false)}
+                    />
+
+                    {/* Compact Daily Summary */}
+                    <CompactDailySummary />
+
+                    {/* Activity Timeline */}
+                    <GlassmorphismCard style={styles.timelineCard}>
+                        <InteractiveTimeline />
+                    </GlassmorphismCard>
+
+                    {/* Heatmap and Leaderboard Grid */}
+                    <View style={styles.cardsGrid}>
+                        <ProductivityHeatmap style={styles.heatmapCard} />
+                        <LiveLeaderboard style={styles.leaderboardCard} />
+                    </View>
+
+                    {/* Mobile Bottom Nav */}
+                    {isMobile && (
+                        <View style={styles.mobileNav}>
+                            {[
+                                { icon: '📊', id: 'dashboard' },
+                                { icon: '📅', id: 'calendar' },
+                                { icon: '⏱️', id: 'timer' },
+                                { icon: '👥', id: 'squad' },
+                                { icon: '⚙️', id: 'settings' },
+                            ].map((item) => (
                                 <TouchableOpacity
-                                    key={view}
-                                    style={[styles.viewButton, activeView === view && styles.viewButtonActive]}
-                                    onPress={() => setActiveView(view)}
+                                    key={item.id}
+                                    style={styles.mobileNavItem}
+                                    onPress={() => item.id === 'timer' && handleStartSessionFromHeader()}
                                 >
-                                    <Text style={[styles.viewButtonText, activeView === view && styles.viewButtonTextActive]}>
-                                        {view}
-                                    </Text>
+                                    <Text style={styles.mobileNavIcon}>{item.icon}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
-                    </View>
-                </View>
+                    )}
+                </ScrollView>
+            </View>
 
-                {/* Inline Session Component */}
-                <InlineSession onSessionChange={handleSessionChange} />
-
-                {/* Activity Timeline */}
-                <GlassmorphismCard style={styles.timelineCard}>
-                    <InteractiveTimeline />
-                </GlassmorphismCard>
-
-                {/* Heatmap and Leaderboard Grid */}
-                <View style={styles.cardsGrid}>
-                    <ProductivityHeatmap style={styles.heatmapCard} />
-                    <LiveLeaderboard style={styles.leaderboardCard} />
-                </View>
-
-                {/* Mobile Bottom Nav */}
-                {isMobile && (
-                    <View style={styles.mobileNav}>
-                        {[
-                            { icon: '📊', id: 'dashboard' },
-                            { icon: '📅', id: 'calendar' },
-                            { icon: '⏱️', id: 'timer' },
-                            { icon: '👥', id: 'squad' },
-                            { icon: '⚙️', id: 'settings' },
-                        ].map((item) => (
-                            <TouchableOpacity
-                                key={item.id}
-                                style={styles.mobileNavItem}
-                                onPress={() => item.id === 'timer' && navigation.navigate('Session')}
-                            >
-                                <Text style={styles.mobileNavIcon}>{item.icon}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                )}
-            </ScrollView>
-
-            {/* Right Sidebar - Squad (desktop only) */}
+            {/* Right Sidebar - Live Squad Widget (desktop only) */}
             {isDesktop && (
                 <View style={styles.squadSidebar}>
-                    <SquadSidebar />
+                    <LiveSquadWidget onHighFive={handleHighFive} />
                 </View>
             )}
+
+            {/* Group Milestone Toast */}
+            <GroupMilestoneToast
+                visible={showMilestoneToast}
+                memberName={milestoneData.name}
+                memberAvatar={milestoneData.avatar}
+                duration="1 hour"
+                onHighFive={handleHighFive}
+                onDismiss={() => setShowMilestoneToast(false)}
+            />
         </View>
     );
 }
@@ -155,6 +228,10 @@ const createStyles = (theme, isDesktop, isTablet, isMobile) => StyleSheet.create
     sidebar: {
         width: isTablet ? 70 : 220,
         backgroundColor: theme.colors.sidebar,
+    },
+    mainWrapper: {
+        flex: 1,
+        flexDirection: 'column',
     },
     mainContent: {
         flex: 1,
@@ -229,6 +306,7 @@ const createStyles = (theme, isDesktop, isTablet, isMobile) => StyleSheet.create
         fontWeight: '600',
     },
     timelineCard: {
+        marginTop: theme.spacing.l,
         marginBottom: theme.spacing.l,
     },
     cardsGrid: {
@@ -244,7 +322,8 @@ const createStyles = (theme, isDesktop, isTablet, isMobile) => StyleSheet.create
         minWidth: isDesktop ? 300 : undefined,
     },
     squadSidebar: {
-        width: 280,
+        width: 300,
+        padding: theme.spacing.m,
     },
     mobileNav: {
         position: 'absolute',

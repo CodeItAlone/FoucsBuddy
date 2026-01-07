@@ -33,15 +33,18 @@ FocusBuddy is a full-stack productivity application that combines **time trackin
 |---------|-------------|
 | **Productivity Dashboard** | Timeline visualization, projects breakdown, app usage tracking, and daily summary stats |
 | **Focus Sessions** | Timed Pomodoro-style sessions (25/45/60 min) with task descriptions |
+| **Live Squad Widget** | Real-time view of 5 friends with status (Active/Deep Work/Idle) and current projects |
+| **Quick Action Header** | Sticky header with theme toggle and session timer |
+| **Daily Summary** | Compact horizontal progress rings showing Focus, Meetings, Breaks, Other |
+| **Milestone Toasts** | Social notifications when squad members complete sessions with "High Five" nudge |
 | **Streak Tracking** | Daily streaks with grace days and 20% decay algorithm for missed days |
-| **Theme Toggle** | Switch between light and dark modes instantly |
+| **Theme Toggle** | Switch between light and dark modes instantly from header |
 | **Responsive Design** | Adapts to desktop, tablet, and mobile screen sizes |
 | **JWT Authentication** | Secure token-based auth with 24-hour expiry |
-| **Real-time Updates** | WebSocket infrastructure ready for live features |
 
 ### Roadmap
 
-- [ ] Group Accountability — See when teammates are working
+- [x] Group Focus Module — Live squad status, milestone toasts
 - [ ] Push Notifications — Streak warnings and session reminders
 - [ ] Analytics Export — Download productivity reports
 - [ ] Calendar Integration — Sync with Google Calendar
@@ -319,6 +322,14 @@ curl -X POST http://localhost:8080/api/auth/signup \
 ---
 
 ## 📝 Recent Changes
+
+### v1.3.0 — Group Focus Module (January 2026)
+
+- 👥 **Live Squad Widget** — Real-time friend status with Active/Deep Work/Idle indicators
+- 🎯 **Quick Action Header** — Sticky header with theme toggle and session timer
+- 📊 **Compact Daily Summary** — Horizontal progress rings layout
+- 🎉 **Milestone Toasts** — Social notifications with High Five button
+- 🌙 **Header Theme Toggle** — One-click Dark/Light mode switch in header
 
 ### v1.2.0 — Dashboard UI (January 2026)
 
