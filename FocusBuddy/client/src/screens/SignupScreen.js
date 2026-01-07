@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
+import { useTheme } from '../services/ThemeContext';
 import { useAuth } from '../services/AuthContext';
 
 export default function SignupScreen({ navigation }) {
+    const { theme } = useTheme();
     const { signup, isLoading, error } = useAuth();
     const [email, setEmail] = useState('');
     const [handle, setHandle] = useState('');
     const [password, setPassword] = useState('');
+
+    const styles = createStyles(theme);
 
     const handleSignup = async () => {
         const cleanEmail = email.trim();
@@ -19,10 +22,7 @@ export default function SignupScreen({ navigation }) {
             Alert.alert("Missing Fields", "Please fill all fields.");
             return;
         }
-        const success = await signup(cleanEmail, cleanHandle, cleanPassword);
-        if (success) {
-            // Navigation handled by App.js state change
-        }
+        await signup(cleanEmail, cleanHandle, cleanPassword);
     };
 
     return (
@@ -36,7 +36,7 @@ export default function SignupScreen({ navigation }) {
                 <TextInput
                     style={styles.input}
                     placeholder="Operative Handle (Username)"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={theme.colors.textMuted}
                     value={handle}
                     onChangeText={setHandle}
                     autoCapitalize="none"
@@ -44,7 +44,7 @@ export default function SignupScreen({ navigation }) {
                 <TextInput
                     style={styles.input}
                     placeholder="Email Frequency"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={theme.colors.textMuted}
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
@@ -53,7 +53,7 @@ export default function SignupScreen({ navigation }) {
                 <TextInput
                     style={styles.input}
                     placeholder="Secure Key (Password)"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={theme.colors.textMuted}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -71,7 +71,7 @@ export default function SignupScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
@@ -100,15 +100,15 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.surface,
         color: theme.colors.text,
         padding: theme.spacing.m,
-        borderRadius: 4,
+        borderRadius: theme.borderRadius.m,
         marginBottom: theme.spacing.m,
         borderWidth: 1,
-        borderColor: theme.colors.gray,
+        borderColor: theme.colors.border,
     },
     button: {
         backgroundColor: theme.colors.primary,
         padding: theme.spacing.m,
-        borderRadius: 4,
+        borderRadius: theme.borderRadius.m,
         alignItems: 'center',
         marginTop: theme.spacing.m,
     },
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     linkText: {
-        color: '#888',
+        color: theme.colors.textSecondary,
         textDecorationLine: 'underline',
     },
     errorText: {

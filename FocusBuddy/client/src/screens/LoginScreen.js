@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
+import { useTheme } from '../services/ThemeContext';
 import { useAuth } from '../services/AuthContext';
 
 export default function LoginScreen({ navigation }) {
+    const { theme } = useTheme();
     const { login, isLoading, error } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
+    const styles = createStyles(theme);
 
     const handleLogin = async () => {
         const cleanEmail = email.trim();
@@ -17,12 +20,7 @@ export default function LoginScreen({ navigation }) {
             Alert.alert("Missing Fields", "Please enter email and password.");
             return;
         }
-        const success = await login(cleanEmail, cleanPassword);
-        if (success) {
-            // Navigation handled by App.js state change, or redundant manually
-        } else {
-            // Error is handled in context but we can show alert if needed
-        }
+        await login(cleanEmail, cleanPassword);
     };
 
     return (
@@ -36,7 +34,7 @@ export default function LoginScreen({ navigation }) {
                 <TextInput
                     style={styles.input}
                     placeholder="Email"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={theme.colors.textMuted}
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
@@ -45,7 +43,7 @@ export default function LoginScreen({ navigation }) {
                 <TextInput
                     style={styles.input}
                     placeholder="Password"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={theme.colors.textMuted}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -63,7 +61,7 @@ export default function LoginScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
@@ -92,15 +90,15 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.surface,
         color: theme.colors.text,
         padding: theme.spacing.m,
-        borderRadius: 4,
+        borderRadius: theme.borderRadius.m,
         marginBottom: theme.spacing.m,
         borderWidth: 1,
-        borderColor: theme.colors.gray,
+        borderColor: theme.colors.border,
     },
     button: {
         backgroundColor: theme.colors.primary,
         padding: theme.spacing.m,
-        borderRadius: 4,
+        borderRadius: theme.borderRadius.m,
         alignItems: 'center',
         marginTop: theme.spacing.m,
     },
@@ -113,7 +111,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     linkText: {
-        color: '#888',
+        color: theme.colors.textSecondary,
         textDecorationLine: 'underline',
     },
     errorText: {

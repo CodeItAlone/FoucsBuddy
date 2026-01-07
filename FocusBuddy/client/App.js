@@ -1,22 +1,22 @@
-
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { theme } from './src/theme';
 
-import HomeScreen from './src/screens/HomeScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
 import SessionScreen from './src/screens/SessionScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import { AuthProvider, useAuth } from './src/services/AuthContext';
+import { ThemeProvider, useTheme } from './src/services/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
 function RootNavigator() {
   const { user, isLoading } = useAuth();
+  const { theme, isDarkMode } = useTheme();
 
   if (isLoading) {
     return (
@@ -28,7 +28,7 @@ function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <StatusBar style="light" />
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -38,7 +38,7 @@ function RootNavigator() {
       >
         {user ? (
           <>
-            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="Session" component={SessionScreen} />
           </>
         ) : (
@@ -54,10 +54,12 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SafeAreaProvider>
-        <RootNavigator />
-      </SafeAreaProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <SafeAreaProvider>
+          <RootNavigator />
+        </SafeAreaProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
+import { useTheme } from '../services/ThemeContext';
 import { sessionApi } from '../services/api';
 import { useAuth } from '../services/AuthContext';
 
@@ -12,15 +12,17 @@ const DURATION_OPTIONS = [
 ];
 
 export default function SessionScreen({ navigation, route }) {
+    const { theme } = useTheme();
     const { user } = useAuth();
-    const [phase, setPhase] = useState('setup'); // 'setup' or 'active'
+    const [phase, setPhase] = useState('setup');
     const [timeLeft, setTimeLeft] = useState(25 * 60);
     const [isActive, setIsActive] = useState(false);
     const [sessionId, setSessionId] = useState(null);
     const [taskName, setTaskName] = useState('');
     const [selectedDuration, setSelectedDuration] = useState(25);
 
-    // Timer effect
+    const styles = createStyles(theme);
+
     useEffect(() => {
         let interval = null;
         if (isActive && timeLeft > 0) {
@@ -116,7 +118,7 @@ export default function SessionScreen({ navigation, route }) {
                     <TextInput
                         style={styles.input}
                         placeholder="e.g., Deep Work, Coding, Study..."
-                        placeholderTextColor="#666"
+                        placeholderTextColor={theme.colors.textMuted}
                         value={taskName}
                         onChangeText={setTaskName}
                         maxLength={60}
@@ -178,7 +180,7 @@ export default function SessionScreen({ navigation, route }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
@@ -207,10 +209,10 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.surface,
         color: theme.colors.text,
         padding: theme.spacing.m,
-        borderRadius: 8,
+        borderRadius: theme.borderRadius.m,
         fontSize: 18,
         borderWidth: 1,
-        borderColor: theme.colors.gray,
+        borderColor: theme.colors.border,
     },
     durationContainer: {
         flexDirection: 'row',
@@ -221,9 +223,9 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: theme.spacing.m,
         marginHorizontal: 4,
-        borderRadius: 8,
+        borderRadius: theme.borderRadius.m,
         borderWidth: 1,
-        borderColor: theme.colors.gray,
+        borderColor: theme.colors.border,
         alignItems: 'center',
     },
     durationButtonActive: {
@@ -231,17 +233,17 @@ const styles = StyleSheet.create({
         borderColor: theme.colors.primary,
     },
     durationText: {
-        color: theme.colors.gray,
+        color: theme.colors.textSecondary,
         fontSize: 16,
         fontWeight: '600',
     },
     durationTextActive: {
-        color: theme.colors.text,
+        color: '#FFFFFF',
     },
     startButton: {
         backgroundColor: theme.colors.primary,
         paddingVertical: theme.spacing.l,
-        borderRadius: 8,
+        borderRadius: theme.borderRadius.m,
         marginTop: theme.spacing.xl,
         alignItems: 'center',
     },
@@ -256,7 +258,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cancelText: {
-        color: theme.colors.gray,
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     timerContainer: {
@@ -265,7 +267,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     timer: {
-        ...theme.typography.timer,
+        fontSize: 80,
+        fontWeight: 'bold',
+        color: theme.colors.primary,
+        fontVariant: ['tabular-nums'],
     },
     taskLabel: {
         ...theme.typography.body,
@@ -288,7 +293,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: theme.spacing.xl,
         borderWidth: 1,
         borderColor: theme.colors.error,
-        borderRadius: 8,
+        borderRadius: theme.borderRadius.m,
     },
     giveUpText: {
         color: theme.colors.error,
