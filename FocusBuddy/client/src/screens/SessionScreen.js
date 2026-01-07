@@ -109,49 +109,51 @@ export default function SessionScreen({ navigation, route }) {
     if (phase === 'setup') {
         return (
             <SafeAreaView style={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.statusText}>CONFIGURE SESSION</Text>
-                </View>
-
-                <View style={styles.setupContainer}>
-                    <Text style={styles.label}>What will you focus on?</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="e.g., Deep Work, Coding, Study..."
-                        placeholderTextColor={theme.colors.textMuted}
-                        value={taskName}
-                        onChangeText={setTaskName}
-                        maxLength={60}
-                    />
-
-                    <Text style={[styles.label, { marginTop: 24 }]}>Duration</Text>
-                    <View style={styles.durationContainer}>
-                        {DURATION_OPTIONS.map((option) => (
-                            <TouchableOpacity
-                                key={option.value}
-                                style={[
-                                    styles.durationButton,
-                                    selectedDuration === option.value && styles.durationButtonActive
-                                ]}
-                                onPress={() => setSelectedDuration(option.value)}
-                            >
-                                <Text style={[
-                                    styles.durationText,
-                                    selectedDuration === option.value && styles.durationTextActive
-                                ]}>
-                                    {option.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                <View style={styles.contentWrapper}>
+                    <View style={styles.header}>
+                        <Text style={styles.statusText}>CONFIGURE SESSION</Text>
                     </View>
 
-                    <TouchableOpacity style={styles.startButton} onPress={startSession}>
-                        <Text style={styles.startButtonText}>BEGIN SESSION</Text>
-                    </TouchableOpacity>
+                    <View style={styles.setupContainer}>
+                        <Text style={styles.label}>What will you focus on?</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g., Deep Work, Coding, Study..."
+                            placeholderTextColor={theme.colors.textMuted}
+                            value={taskName}
+                            onChangeText={setTaskName}
+                            maxLength={60}
+                        />
 
-                    <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-                        <Text style={styles.cancelText}>Cancel</Text>
-                    </TouchableOpacity>
+                        <Text style={[styles.label, { marginTop: 24 }]}>Duration</Text>
+                        <View style={styles.durationContainer}>
+                            {DURATION_OPTIONS.map((option) => (
+                                <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                        styles.durationButton,
+                                        selectedDuration === option.value && styles.durationButtonActive
+                                    ]}
+                                    onPress={() => setSelectedDuration(option.value)}
+                                >
+                                    <Text style={[
+                                        styles.durationText,
+                                        selectedDuration === option.value && styles.durationTextActive
+                                    ]}>
+                                        {option.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <TouchableOpacity style={styles.startButton} onPress={startSession}>
+                            <Text style={styles.startButtonText}>BEGIN SESSION</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
+                            <Text style={styles.cancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </SafeAreaView>
         );
@@ -160,21 +162,23 @@ export default function SessionScreen({ navigation, route }) {
     // Active Session Phase
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.statusText}>FOCUS MODE ENGAGED</Text>
-            </View>
+            <View style={styles.contentWrapper}>
+                <View style={styles.header}>
+                    <Text style={styles.statusText}>FOCUS MODE ENGAGED</Text>
+                </View>
 
-            <View style={styles.timerContainer}>
-                <Text style={styles.timer}>{formatTime(timeLeft)}</Text>
-                <Text style={styles.taskLabel}>{taskName}</Text>
-            </View>
+                <View style={styles.timerContainer}>
+                    <Text style={styles.timer}>{formatTime(timeLeft)}</Text>
+                    <Text style={styles.taskLabel}>{taskName}</Text>
+                </View>
 
-            <View style={styles.footer}>
-                <Text style={styles.warningText}>DO NOT LEAVE THIS SCREEN</Text>
+                <View style={styles.footer}>
+                    <Text style={styles.warningText}>DO NOT LEAVE THIS SCREEN</Text>
 
-                <TouchableOpacity style={styles.giveUpButton} onPress={handleGiveUp}>
-                    <Text style={styles.giveUpText}>GIVE UP</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity style={styles.giveUpButton} onPress={handleGiveUp}>
+                        <Text style={styles.giveUpText}>GIVE UP</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </SafeAreaView>
     );
@@ -184,7 +188,13 @@ const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
-        padding: theme.spacing.m,
+        alignItems: 'center',
+    },
+    contentWrapper: {
+        flex: 1,
+        width: '100%',
+        maxWidth: 500,
+        padding: theme.spacing.l,
     },
     header: {
         alignItems: 'center',

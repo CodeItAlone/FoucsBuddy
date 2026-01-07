@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../services/ThemeContext';
 import { useAuth } from '../services/AuthContext';
 import Sidebar from '../components/Sidebar';
-import GlowingTimerButton from '../components/GlowingTimerButton';
+import InlineSession from '../components/InlineSession';
 import SquadSidebar from '../components/SquadSidebar';
 import InteractiveTimeline from '../components/TimelineChart';
 import ProductivityHeatmap from '../components/ProductivityHeatmap';
@@ -40,13 +40,12 @@ export default function DashboardScreen({ navigation }) {
     const styles = createStyles(theme, isDesktop, isTablet, isMobile);
 
     const handleNavItemPress = (itemId) => {
-        if (itemId === 'timer') {
-            navigation.navigate('Session');
-        }
+        // Navigation handled by sidebar, session is now inline
+        console.log('Nav item pressed:', itemId);
     };
 
-    const handleStartSession = () => {
-        navigation.navigate('Session');
+    const handleSessionChange = (status) => {
+        console.log('Session status:', status);
     };
 
     return (
@@ -101,8 +100,8 @@ export default function DashboardScreen({ navigation }) {
                     </View>
                 </View>
 
-                {/* Quick Start Button */}
-                <GlowingTimerButton onPress={handleStartSession} />
+                {/* Inline Session Component */}
+                <InlineSession onSessionChange={handleSessionChange} />
 
                 {/* Activity Timeline */}
                 <GlassmorphismCard style={styles.timelineCard}>
