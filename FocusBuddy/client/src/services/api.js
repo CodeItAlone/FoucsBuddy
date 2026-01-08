@@ -6,6 +6,11 @@ const BASE_URL = Platform.OS === 'web'
     ? 'http://localhost:8080/api'
     : 'http://10.0.2.2:8080/api';
 
+// WebSocket URL for real-time updates
+export const WS_URL = Platform.OS === 'web'
+    ? 'http://localhost:8080/ws'
+    : 'http://10.0.2.2:8080/ws';
+
 const api = axios.create({
     baseURL: BASE_URL,
     timeout: 10000,
@@ -24,6 +29,8 @@ export const setAuthToken = (token) => {
 export const clearAuthToken = () => {
     authToken = null;
 };
+
+export const getAuthToken = () => authToken;
 
 // Request interceptor to add auth header
 api.interceptors.request.use(
@@ -64,4 +71,18 @@ export const sessionApi = {
     getHistory: () => api.get('/sessions/history'),
 };
 
+export const groupApi = {
+    getMyGroups: () => api.get('/groups'),
+    getGroup: (groupId) => api.get(`/groups/${groupId}`),
+    getMemberStatuses: (groupId) => api.get(`/groups/${groupId}/members/status`),
+    createGroup: (name, category) => api.post('/groups', { name, category }),
+    joinGroup: (groupId) => api.post(`/groups/${groupId}/join`),
+    leaveGroup: (groupId) => api.post(`/groups/${groupId}/leave`),
+};
+
+export const streakApi = {
+    getMyStreak: () => api.get('/streaks/me'),
+};
+
 export default api;
+

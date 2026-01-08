@@ -1,39 +1,72 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { authApi, setAuthToken, clearAuthToken } from './api';
+import * as SecureStore from 'expo-secure-store';
 
 const AuthContext = createContext();
 
-// Simple token storage for web (localStorage) and native (in-memory for now)
+const TOKEN_KEY = 'focusbuddy_token';
+const USER_KEY = 'focusbuddy_user';
+
+// Token storage - uses SecureStore for native, localStorage for web
 const tokenStorage = {
     getToken: async () => {
         if (Platform.OS === 'web') {
-            return localStorage.getItem('focusbuddy_token');
+            return localStorage.getItem(TOKEN_KEY);
         }
-        // For native, we'd use SecureStore, but for MVP use in-memory
-        return null;
+        try {
+            return await SecureStore.getItemAsync(TOKEN_KEY);
+        } catch (e) {
+            console.error('Error getting token from SecureStore:', e);
+            return null;
+        }
     },
     setToken: async (token) => {
         if (Platform.OS === 'web') {
-            localStorage.setItem('focusbuddy_token', token);
+            localStorage.setItem(TOKEN_KEY, token);
+        } else {
+            try {
+                await SecureStore.setItemAsync(TOKEN_KEY, token);
+            } catch (e) {
+                console.error('Error saving token to SecureStore:', e);
+            }
         }
     },
     getUser: async () => {
         if (Platform.OS === 'web') {
-            const userData = localStorage.getItem('focusbuddy_user');
+            const userData = localStorage.getItem(USER_KEY);
             return userData ? JSON.parse(userData) : null;
         }
-        return null;
+        try {
+            const userData = await SecureStore.getItemAsync(USER_KEY);
+            return userData ? JSON.parse(userData) : null;
+        } catch (e) {
+            console.error('Error getting user from SecureStore:', e);
+            return null;
+        }
     },
     setUser: async (user) => {
         if (Platform.OS === 'web') {
-            localStorage.setItem('focusbuddy_user', JSON.stringify(user));
+            localStorage.setItem(USER_KEY, JSON.stringify(user));
+        } else {
+            try {
+                await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+            } catch (e) {
+                console.error('Error saving user to SecureStore:', e);
+            }
         }
     },
     clear: async () => {
         if (Platform.OS === 'web') {
-            localStorage.removeItem('focusbuddy_token');
-            localStorage.removeItem('focusbuddy_user');
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+        } else {
+            try {
+                await SecureStore.deleteItemAsync(TOKEN_KEY);
+                await SecureStore.deleteItemAsync(USER_KEY);
+            } catch (e) {
+                console.error('Error clearing SecureStore:', e);
+            }
         }
     }
 };

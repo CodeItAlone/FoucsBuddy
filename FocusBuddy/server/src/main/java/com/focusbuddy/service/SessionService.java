@@ -1,11 +1,14 @@
 package com.focusbuddy.service;
 
+import com.focusbuddy.model.Group;
 import com.focusbuddy.model.Session;
 import com.focusbuddy.model.Session.SessionStatus;
 import com.focusbuddy.model.User;
+import com.focusbuddy.model.dto.SessionEvent;
 import com.focusbuddy.repository.SessionRepository;
 import com.focusbuddy.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,8 +23,7 @@ public class SessionService {
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
     private final StreakService streakService;
-    // private final SimpMessagingTemplate messagingTemplate; // Unused in MVP until
-    // client connects
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public Session startSession(Long userId, String taskDescription, int durationMinutes) {
@@ -43,7 +45,7 @@ public class SessionService {
 
         Session savedSession = sessionRepository.save(session);
 
-        // Broadcast "STARTED"
+        // Broadcast "STARTED" to all user's groups
         broadcastSessionUpdate(savedSession, user, durationMinutes);
 
         return savedSession;
@@ -95,31 +97,18 @@ public class SessionService {
     }
 
     private void broadcastSessionUpdate(Session session, User user, int timeLeft) {
-        // Assuming user belongs to a group. For MVP we notify their "main" group or all
-        // groups.
-        // Since logic says "Groups check", we need a groupId.
-        // For now, let's assume one active group per user or broadcast to user's handle
-        // topic for friends?
-        // Spec says: Topic: /topic/group/{groupId}
-        // We need to fetch the user's group.
-        // Simplification: Iterate user.getGroups() (if we added it, skipping for now to
-        // keep it compilable)
-        // Or if Group logic isn't fully linked in User entity yet, we might skip
-        // implementation details or broadcast to a general channel?
-        // I will comment out the actual send call if I can't resolve groupId easily
-        // without adding more logic.
-        // Wait, User entity doesn't have `groups` field in my code?
-        // Group entity has `members`. User side relation not mapped as `groups` list in
-        // `User.java`.
-        // I will add TODO comment for actual send, but leave the method structure.
+        SessionEvent event = new SessionEvent(
+                user.getHandle(),
+                session.getStatus().name(),
+                session.getTaskDescription(),
+                timeLeft);
 
-        // com.focusbuddy.model.dto.SessionEvent event = new
-        // com.focusbuddy.model.dto.SessionEvent(
-        // user.getHandle(),
-        // session.getStatus().name(),
-        // session.getTaskDescription(),
-        // timeLeft
-        // );
-        // messagingTemplate.convertAndSend("/topic/group/" + groupId, event);
+        // Broadcast to all groups the user belongs to
+        for (Group group : user.getGroups()) {
+            messagingTemplate.convertAndSend("/topic/group/" + group.getId(), event);
+        }
+
+        // Also broadcast to a user-specific topic for direct subscribers
+        messagingTemplate.convertAndSend("/topic/user/" + user.getId(), event);
     }
 }

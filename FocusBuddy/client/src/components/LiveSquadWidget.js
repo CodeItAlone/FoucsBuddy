@@ -1,27 +1,22 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { useTheme } from '../services/ThemeContext';
-
-// Sample squad data with enhanced info
-const squadMembers = [
-    { id: 1, name: 'Alex Chen', avatar: '👨‍💻', status: 'deepWork', project: 'API Design', duration: 45, total: 60 },
-    { id: 2, name: 'Sam Wilson', avatar: '👩‍🎨', status: 'active', project: 'UI Review', duration: 23, total: 45 },
-    { id: 3, name: 'Maya Patel', avatar: '👨‍🔬', status: 'deepWork', project: 'Code Review', duration: 52, total: 60 },
-    { id: 4, name: 'Chris Lee', avatar: '👩‍💼', status: 'idle', project: 'Last: Sprint Planning', duration: 0, total: 0 },
-    { id: 5, name: 'Jordan Park', avatar: '🧑‍🚀', status: 'active', project: 'Documentation', duration: 15, total: 25 },
-];
+import { groupApi } from '../services/api';
+import { connect, subscribeToGroup, isConnected } from '../services/websocket';
 
 function StatusPulse({ status, theme }) {
     const getColor = () => {
         switch (status) {
+            case 'DEEP_WORK':
             case 'deepWork': return theme.colors.primary;
+            case 'ACTIVE':
             case 'active': return theme.colors.secondary;
             default: return theme.colors.textMuted;
         }
     };
 
     const color = getColor();
-    const isAnimated = status !== 'idle';
+    const isAnimated = status !== 'IDLE' && status !== 'idle';
 
     return (
         <View style={[styles.pulseContainer]}>
@@ -42,11 +37,13 @@ function ProgressMini({ progress, color }) {
 }
 
 function SquadMember({ member, theme, onHighFive }) {
-    const styles = createMemberStyles(theme);
+    const memberStyles = createMemberStyles(theme);
 
     const getStatusLabel = () => {
         switch (member.status) {
+            case 'DEEP_WORK':
             case 'deepWork': return 'Deep Work';
+            case 'ACTIVE':
             case 'active': return 'Active';
             default: return 'Idle';
         }
@@ -54,37 +51,52 @@ function SquadMember({ member, theme, onHighFive }) {
 
     const getStatusColor = () => {
         switch (member.status) {
+            case 'DEEP_WORK':
             case 'deepWork': return theme.colors.primary;
+            case 'ACTIVE':
             case 'active': return theme.colors.secondary;
             default: return theme.colors.textMuted;
         }
     };
 
-    const progress = member.total > 0 ? member.duration / member.total : 0;
+    // Calculate progress from timeLeftMinutes if available
+    const duration = member.timeLeftMinutes || member.duration || 0;
+    const total = member.total || 60; // Default to 60 min session
+    const progress = total > 0 ? Math.max(0, (total - duration) / total) : 0;
+
+    // Generate avatar from handle/name
+    const getAvatar = () => {
+        const avatars = ['👨‍💻', '👩‍🎨', '👨‍🔬', '👩‍💼', '🧑‍🚀', '👩‍🔧', '👨‍🎓'];
+        return avatars[(member.userId || member.id) % avatars.length];
+    };
+
+    const isIdle = member.status === 'IDLE' || member.status === 'idle';
 
     return (
-        <View style={styles.memberCard}>
-            <View style={styles.avatarSection}>
-                <View style={[styles.avatarRing, { borderColor: getStatusColor() }]}>
-                    <Text style={styles.avatar}>{member.avatar}</Text>
+        <View style={memberStyles.memberCard}>
+            <View style={memberStyles.avatarSection}>
+                <View style={[memberStyles.avatarRing, { borderColor: getStatusColor() }]}>
+                    <Text style={memberStyles.avatar}>{member.avatar || getAvatar()}</Text>
                 </View>
                 <StatusPulse status={member.status} theme={theme} />
             </View>
 
-            <View style={styles.infoSection}>
-                <View style={styles.nameRow}>
-                    <Text style={styles.name}>{member.name}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
-                        <Text style={[styles.statusText, { color: getStatusColor() }]}>{getStatusLabel()}</Text>
+            <View style={memberStyles.infoSection}>
+                <View style={memberStyles.nameRow}>
+                    <Text style={memberStyles.name}>{member.handle || member.name}</Text>
+                    <View style={[memberStyles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
+                        <Text style={[memberStyles.statusText, { color: getStatusColor() }]}>{getStatusLabel()}</Text>
                     </View>
                 </View>
 
-                <Text style={styles.project} numberOfLines={1}>{member.project}</Text>
+                <Text style={memberStyles.project} numberOfLines={1}>
+                    {member.currentTask || member.project || (isIdle ? 'Not in session' : 'Working...')}
+                </Text>
 
-                {member.status !== 'idle' && (
-                    <View style={styles.progressRow}>
+                {!isIdle && (
+                    <View style={memberStyles.progressRow}>
                         <ProgressMini progress={progress} color={getStatusColor()} />
-                        <Text style={styles.duration}>{member.duration}min</Text>
+                        <Text style={memberStyles.duration}>{duration}min</Text>
                     </View>
                 )}
             </View>
@@ -92,35 +104,124 @@ function SquadMember({ member, theme, onHighFive }) {
     );
 }
 
-export default function LiveSquadWidget({ onHighFive }) {
+export default function LiveSquadWidget({ groupId, onHighFive, onNavigateToGroups }) {
     const { theme } = useTheme();
-    const styles = createStyles(theme);
+    const widgetStyles = createStyles(theme);
 
-    const activeCount = squadMembers.filter(m => m.status !== 'idle').length;
+    const [squadMembers, setSquadMembers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [wsConnected, setWsConnected] = useState(false);
+
+    // Fetch members from API
+    const fetchMembers = useCallback(async () => {
+        if (!groupId) {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const response = await groupApi.getMemberStatuses(groupId);
+            setSquadMembers(response.data);
+            setError(null);
+        } catch (err) {
+            console.error('Failed to fetch squad members:', err);
+            setError('Failed to load squad');
+        } finally {
+            setLoading(false);
+        }
+    }, [groupId]);
+
+    // Connect to WebSocket and subscribe to group updates
+    useEffect(() => {
+        if (!groupId) return;
+
+        fetchMembers();
+
+        // Connect to WebSocket
+        connect(
+            () => {
+                setWsConnected(true);
+                // Subscribe to group updates
+                subscribeToGroup(groupId, (event) => {
+                    // Update member status when we receive an event
+                    setSquadMembers(prev => {
+                        const index = prev.findIndex(m => m.handle === event.userHandle);
+                        if (index >= 0) {
+                            const updated = [...prev];
+                            updated[index] = {
+                                ...updated[index],
+                                status: event.status === 'ACTIVE' ? 'DEEP_WORK' : event.status,
+                                currentTask: event.task,
+                                timeLeftMinutes: event.timeLeft
+                            };
+                            return updated;
+                        }
+                        return prev;
+                    });
+                });
+            },
+            (err) => {
+                console.error('WebSocket error:', err);
+                setWsConnected(false);
+            }
+        );
+    }, [groupId, fetchMembers]);
+
+    const activeCount = squadMembers.filter(m => m.status !== 'IDLE' && m.status !== 'idle').length;
+
+    if (!groupId) {
+        return (
+            <View style={widgetStyles.container}>
+                <View style={widgetStyles.header}>
+                    <Text style={widgetStyles.title}>Live Squad</Text>
+                </View>
+                <View style={widgetStyles.emptyState}>
+                    <Text style={widgetStyles.emptyText}>Join a group to see your squad</Text>
+                    <TouchableOpacity style={widgetStyles.inviteButton} onPress={onNavigateToGroups}>
+                        <Text style={widgetStyles.inviteText}>Browse Groups</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
+
+    if (loading) {
+        return (
+            <View style={widgetStyles.container}>
+                <View style={widgetStyles.header}>
+                    <Text style={widgetStyles.title}>Live Squad</Text>
+                </View>
+                <View style={widgetStyles.loadingState}>
+                    <ActivityIndicator color={theme.colors.primary} />
+                </View>
+            </View>
+        );
+    }
 
     return (
-        <View style={styles.container}>
+        <View style={widgetStyles.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.titleRow}>
-                    <Text style={styles.title}>Live Squad</Text>
-                    <View style={styles.liveBadge}>
-                        <View style={styles.liveIndicator} />
-                        <Text style={styles.liveText}>Live</Text>
+            <View style={widgetStyles.header}>
+                <View style={widgetStyles.titleRow}>
+                    <Text style={widgetStyles.title}>Live Squad</Text>
+                    <View style={widgetStyles.liveBadge}>
+                        <View style={[widgetStyles.liveIndicator, { backgroundColor: wsConnected ? theme.colors.secondary : theme.colors.textMuted }]} />
+                        <Text style={widgetStyles.liveText}>{wsConnected ? 'Live' : 'Offline'}</Text>
                     </View>
                 </View>
-                <Text style={styles.subtitle}>{activeCount} of {squadMembers.length} focusing</Text>
+                <Text style={widgetStyles.subtitle}>{activeCount} of {squadMembers.length} focusing</Text>
             </View>
 
             {/* Members List */}
             <ScrollView
-                style={styles.membersList}
+                style={widgetStyles.membersList}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.membersContent}
+                contentContainerStyle={widgetStyles.membersContent}
             >
                 {squadMembers.map(member => (
                     <SquadMember
-                        key={member.id}
+                        key={member.userId || member.id}
                         member={member}
                         theme={theme}
                         onHighFive={onHighFive}
@@ -129,9 +230,9 @@ export default function LiveSquadWidget({ onHighFive }) {
             </ScrollView>
 
             {/* Invite Button */}
-            <TouchableOpacity style={styles.inviteButton}>
-                <Text style={styles.inviteIcon}>+</Text>
-                <Text style={styles.inviteText}>Invite to Squad</Text>
+            <TouchableOpacity style={widgetStyles.inviteButton}>
+                <Text style={widgetStyles.inviteIcon}>+</Text>
+                <Text style={widgetStyles.inviteText}>Invite to Squad</Text>
             </TouchableOpacity>
         </View>
     );
@@ -248,6 +349,24 @@ const createStyles = (theme) => StyleSheet.create({
         fontSize: 14,
         color: theme.colors.primary,
         fontWeight: '600',
+    },
+    emptyState: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: theme.spacing.xl,
+    },
+    emptyText: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        marginBottom: theme.spacing.m,
+        textAlign: 'center',
+    },
+    loadingState: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: theme.spacing.xl,
     },
 });
 

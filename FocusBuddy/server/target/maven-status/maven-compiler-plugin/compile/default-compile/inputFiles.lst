@@ -3,8 +3,11 @@ C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focu
 C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\security\JwtTokenProvider.java
 C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\exception\ResourceNotFoundException.java
 C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\dto\LoginRequest.java
+C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\controller\StreakController.java
+C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\controller\GroupController.java
 C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\model\Streak.java
 C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\controller\SessionController.java
+C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\service\GroupService.java
 C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\config\WebConfig.java
 C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\model\Session.java
 C:\Users\SUBRATO KUNDU\Desktop\NEW WORK\FocusBuddy\server\src\main\java\com\focusbuddy\service\AuthService.java

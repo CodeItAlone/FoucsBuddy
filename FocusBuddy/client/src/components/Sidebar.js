@@ -5,6 +5,7 @@ import { useAuth } from '../services/AuthContext';
 
 const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'groups', label: 'Groups', icon: '👥' },
     { id: 'calendar', label: 'Calendar', icon: '📅' },
     { id: 'projects', label: 'Projects & tasks', icon: '📋' },
     { id: 'timer', label: 'Timer', icon: '⏱️' },
