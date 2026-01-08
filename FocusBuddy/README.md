@@ -120,10 +120,10 @@ npm start
 │  │  Dashboard      │  Sidebar          │  AuthContext       │  │
 │  │  Login/Signup   │  TimelineChart    │  ThemeContext      │  │
 │  │  Session        │  ProgressBar      │  API (Axios)       │  │
-│  │                 │  CircularProgress │                    │  │
+│  │  Groups         │  LiveSquadWidget  │  WebSocket         │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────┘
-                              │ HTTPS + JWT
+                              │ HTTPS + JWT / WebSocket
                               ▼
 ┌────────────────────────────────────────────────────────────────┐
 │  SERVER — Spring Boot 3.2                                       │
@@ -132,7 +132,8 @@ npm start
 │  │  ────────       │  ───────────      │  ────────          │  │
 │  │  JwtAuthFilter  │  AuthController   │  AuthService       │  │
 │  │  JwtProvider    │  SessionController│  SessionService    │  │
-│  │  BCrypt         │                   │  StreakService     │  │
+│  │  WebSocket      │  GroupController  │  GroupService      │  │
+│  │  BCrypt         │  StreakController │  StreakService     │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────┘
                               │ JPA/Hibernate
@@ -158,16 +159,22 @@ FocusBuddy/
 │   │   │   ├── TimelineChart.js         # Activity timeline
 │   │   │   ├── ProgressBar.js           # Horizontal progress
 │   │   │   ├── CircularProgress.js      # Donut charts
-│   │   │   └── DashboardCard.js         # Card container
+│   │   │   ├── DashboardCard.js         # Card container
+│   │   │   ├── LiveSquadWidget.js       # Real-time squad status
+│   │   │   └── CompactDailySummary.js   # Compact summary rings
 │   │   ├── screens/
 │   │   │   ├── DashboardScreen.js       # Main dashboard
 │   │   │   ├── LoginScreen.js           # Authentication
 │   │   │   ├── SignupScreen.js          # Registration
-│   │   │   └── SessionScreen.js         # Focus timer
+│   │   │   ├── SessionScreen.js         # Focus timer
+│   │   │   ├── GroupsScreen.js          # Groups list
+│   │   │   ├── GroupDetailScreen.js     # Group details
+│   │   │   └── CreateGroupScreen.js     # Create new group
 │   │   ├── services/
 │   │   │   ├── api.js                   # Axios HTTP client
 │   │   │   ├── AuthContext.js           # Auth state management
-│   │   │   └── ThemeContext.js          # Theme provider
+│   │   │   ├── ThemeContext.js          # Theme provider
+│   │   │   └── websocket.js             # WebSocket client
 │   │   └── theme/
 │   │       └── index.js                 # Light/Dark palettes
 │   ├── App.js                           # Root component
@@ -322,6 +329,15 @@ curl -X POST http://localhost:8080/api/auth/signup \
 ---
 
 ## 📝 Recent Changes
+
+### v1.4.0 — Frontend Integration & WebSocket (January 2026)
+
+- 🔌 **WebSocket Integration** — Real-time session status updates via STOMP/SockJS
+- 🔗 **Full API Integration** — LiveSquadWidget now fetches real data from backend
+- 📱 **Group Screens** — New GroupsScreen, GroupDetailScreen, CreateGroupScreen
+- 🎮 **Group Controller** — Backend API for group CRUD operations
+- 📊 **Streak Controller** — Dedicated endpoint for streak data
+- 🔄 **Real-time Updates** — Live session status changes pushed to clients
 
 ### v1.3.0 — Group Focus Module (January 2026)
 
