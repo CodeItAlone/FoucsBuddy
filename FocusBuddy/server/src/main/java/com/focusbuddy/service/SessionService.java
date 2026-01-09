@@ -1,5 +1,7 @@
 package com.focusbuddy.service;
 
+import com.focusbuddy.exception.ResourceNotFoundException;
+import com.focusbuddy.exception.UnauthorizedException;
 import com.focusbuddy.model.Group;
 import com.focusbuddy.model.Session;
 import com.focusbuddy.model.Session.SessionStatus;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -27,14 +30,13 @@ public class SessionService {
 
     @Transactional
     public Session startSession(Long userId, String taskDescription, int durationMinutes) {
-        // Validation
         Optional<Session> activeSession = sessionRepository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE);
         if (activeSession.isPresent()) {
             throw new IllegalStateException("User already has an active session.");
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Session session = new Session();
         session.setUser(user);
@@ -44,17 +46,14 @@ public class SessionService {
         session.setStartedAt(LocalDateTime.now());
 
         Session savedSession = sessionRepository.save(session);
-
-        // Broadcast "STARTED" to all user's groups
         broadcastSessionUpdate(savedSession, user, durationMinutes);
 
         return savedSession;
     }
 
     @Transactional
-    public Session completeSession(Long sessionId, String reflection) {
-        Session session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+    public Session completeSession(Long userId, Long sessionId, String reflection) {
+        Session session = getSessionWithOwnershipCheck(userId, sessionId);
 
         if (session.getStatus() != SessionStatus.ACTIVE) {
             throw new IllegalStateException("Session is not active.");
@@ -81,9 +80,8 @@ public class SessionService {
     }
 
     @Transactional
-    public Session abandonSession(Long sessionId) {
-        Session session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+    public Session abandonSession(Long userId, Long sessionId) {
+        Session session = getSessionWithOwnershipCheck(userId, sessionId);
 
         if (session.getStatus() != SessionStatus.ACTIVE) {
             throw new IllegalStateException("Session is not active.");
@@ -96,6 +94,25 @@ public class SessionService {
         return savedSession;
     }
 
+    public Optional<Session> getActiveSession(Long userId) {
+        return sessionRepository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE);
+    }
+
+    public List<Session> getSessionHistory(Long userId) {
+        return sessionRepository.findByUserId(userId);
+    }
+
+    private Session getSessionWithOwnershipCheck(Long userId, Long sessionId) {
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+
+        if (!session.getUser().getId().equals(userId)) {
+            throw new UnauthorizedException("You do not have permission to modify this session");
+        }
+
+        return session;
+    }
+
     private void broadcastSessionUpdate(Session session, User user, int timeLeft) {
         SessionEvent event = new SessionEvent(
                 user.getHandle(),
@@ -103,12 +120,10 @@ public class SessionService {
                 session.getTaskDescription(),
                 timeLeft);
 
-        // Broadcast to all groups the user belongs to
         for (Group group : user.getGroups()) {
             messagingTemplate.convertAndSend("/topic/group/" + group.getId(), event);
         }
 
-        // Also broadcast to a user-specific topic for direct subscribers
         messagingTemplate.convertAndSend("/topic/user/" + user.getId(), event);
     }
 }

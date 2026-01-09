@@ -62,4 +62,22 @@ public class StreakService {
             streak.setCurrentStreak(newStreak);
         }
     }
+
+    @Transactional
+    public Streak getStreak(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Streak streak = user.getStreak();
+        if (streak == null) {
+            streak = new Streak();
+            streak.setUser(user);
+            streak.setCurrentStreak(0);
+            streak.setGraceDaysRemaining(1);
+            user.setStreak(streak);
+            streakRepository.save(streak);
+        }
+
+        return streak;
+    }
 }

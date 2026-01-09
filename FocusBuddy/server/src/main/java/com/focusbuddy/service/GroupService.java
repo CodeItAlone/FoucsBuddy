@@ -1,7 +1,7 @@
 package com.focusbuddy.service;
 
+import com.focusbuddy.dto.response.MemberStatusResponse;
 import com.focusbuddy.exception.ResourceNotFoundException;
-import com.focusbuddy.exception.UnauthorizedException;
 import com.focusbuddy.model.Group;
 import com.focusbuddy.model.Group.GroupStatus;
 import com.focusbuddy.model.Session;
@@ -79,7 +79,7 @@ public class GroupService {
         groupRepository.save(group);
     }
 
-    public List<MemberStatus> getGroupMemberStatuses(Long groupId) {
+    public List<MemberStatusResponse> getGroupMemberStatuses(Long groupId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("Group not found"));
 
@@ -88,7 +88,7 @@ public class GroupService {
                 .collect(Collectors.toList());
     }
 
-    private MemberStatus getMemberStatus(User user) {
+    private MemberStatusResponse getMemberStatus(User user) {
         var activeSession = sessionRepository.findByUserIdAndStatus(
                 user.getId(), Session.SessionStatus.ACTIVE);
 
@@ -108,20 +108,11 @@ public class GroupService {
             status = "IDLE";
         }
 
-        return new MemberStatus(
+        return new MemberStatusResponse(
                 user.getId(),
                 user.getHandle(),
                 status,
                 currentTask,
                 timeLeft);
-    }
-
-    // DTO for member status
-    public record MemberStatus(
-            Long userId,
-            String handle,
-            String status,
-            String currentTask,
-            Integer timeLeftMinutes) {
     }
 }

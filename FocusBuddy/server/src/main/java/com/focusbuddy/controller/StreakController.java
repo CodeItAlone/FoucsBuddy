@@ -1,10 +1,9 @@
 package com.focusbuddy.controller;
 
-import com.focusbuddy.exception.ResourceNotFoundException;
+import com.focusbuddy.dto.response.StreakResponse;
 import com.focusbuddy.model.Streak;
-import com.focusbuddy.model.User;
-import com.focusbuddy.repository.StreakRepository;
-import com.focusbuddy.repository.UserRepository;
+import com.focusbuddy.security.CurrentUserService;
+import com.focusbuddy.service.StreakService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,34 +15,17 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class StreakController {
 
-    private final StreakRepository streakRepository;
-    private final UserRepository userRepository;
+        private final StreakService streakService;
+        private final CurrentUserService currentUserService;
 
-    @GetMapping("/me")
-    public ResponseEntity<StreakResponse> getMyStreak(@AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        @GetMapping("/me")
+        public ResponseEntity<StreakResponse> getMyStreak(@AuthenticationPrincipal UserDetails userDetails) {
+                Long userId = currentUserService.getUserId(userDetails);
+                Streak streak = streakService.getStreak(userId);
 
-        Streak streak = streakRepository.findById(user.getId())
-                .orElse(createDefaultStreak(user));
-
-        return ResponseEntity.ok(new StreakResponse(
-                streak.getCurrentStreak(),
-                streak.getGraceDaysRemaining(),
-                streak.getLastSessionDate()));
-    }
-
-    private Streak createDefaultStreak(User user) {
-        Streak streak = new Streak();
-        streak.setUser(user);
-        streak.setCurrentStreak(0);
-        streak.setGraceDaysRemaining(1);
-        return streakRepository.save(streak);
-    }
-
-    record StreakResponse(
-            int currentStreak,
-            int graceDaysRemaining,
-            java.time.LocalDate lastSessionDate) {
-    }
+                return ResponseEntity.ok(new StreakResponse(
+                                streak.getCurrentStreak(),
+                                streak.getGraceDaysRemaining(),
+                                streak.getLastSessionDate()));
+        }
 }
