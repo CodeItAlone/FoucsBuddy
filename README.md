@@ -17,7 +17,7 @@
 
 ## 📖 About
 
-FocusBuddy is a full-stack productivity application that combines **time tracking**, **streak management**, and **social accountability** to help you stay focused. Built with a modern tech stack featuring a Spring Boot backend and React Native frontend with Expo.
+FocusBuddy is a full-stack productivity application that combines **time tracking**, **streak management**, and **distraction logging** to help you stay focused. Built with a modern tech stack featuring a Spring Boot backend and React Native frontend with Expo.
 
 **Key Highlights:**
 - 🎨 **Beautiful Dashboard** — Tempus-inspired UI with timeline visualization, progress charts, and analytics
@@ -33,10 +33,9 @@ FocusBuddy is a full-stack productivity application that combines **time trackin
 |---------|-------------|
 | **Productivity Dashboard** | Timeline visualization, projects breakdown, app usage tracking, and daily summary stats |
 | **Focus Sessions** | Timed Pomodoro-style sessions (25/45/60 min) with task descriptions |
-| **Live Squad Widget** | Real-time view of 5 friends with status (Active/Deep Work/Idle) and current projects |
+| **Distraction Logging** | Track distractions during sessions with normalized data model |
 | **Quick Action Header** | Sticky header with theme toggle and session timer |
 | **Daily Summary** | Compact horizontal progress rings showing Focus, Meetings, Breaks, Other |
-| **Milestone Toasts** | Social notifications when squad members complete sessions with "High Five" nudge |
 | **Streak Tracking** | Daily streaks with grace days and 20% decay algorithm for missed days |
 | **Theme Toggle** | Switch between light and dark modes instantly from header |
 | **Responsive Design** | Adapts to desktop, tablet, and mobile screen sizes |
@@ -44,7 +43,7 @@ FocusBuddy is a full-stack productivity application that combines **time trackin
 
 ### Roadmap
 
-- [x] Group Focus Module — Live squad status, milestone toasts
+- [x] MVP Single-User Focus — Distraction logging, REST-correct API
 - [ ] Push Notifications — Streak warnings and session reminders
 - [ ] Analytics Export — Download productivity reports
 - [ ] Calendar Integration — Sync with Google Calendar
@@ -56,10 +55,10 @@ FocusBuddy is a full-stack productivity application that combines **time trackin
 <div align="center">
 
 ### Light Mode
-<img src="docs/screenshots/dashboard-light.png" alt="Dashboard Light Mode" width="800"/>
+<img src="FocusBuddy/docs/screenshots/dashboard_light.png" alt="Dashboard Light Mode" width="800"/>
 
 ### Dark Mode
-<img src="docs/screenshots/dashboard-dark.png" alt="Dashboard Dark Mode" width="800"/>
+<img src="FocusBuddy/docs/screenshots/dashboard_dark.png" alt="Dashboard Dark Mode" width="800"/>
 
 </div>
 
@@ -139,9 +138,9 @@ npm start
                               ▼
 ┌────────────────────────────────────────────────────────────────┐
 │  DATABASE — H2 (Dev) / PostgreSQL (Prod)                        │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  app_users  │  sessions  │  streaks  │  groups           │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  app_users  │  sessions  │  streaks  │  distraction_logs   │  │
+│  └──────────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -245,11 +244,12 @@ Authenticate and receive a JWT token.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/sessions/start` | Start a new focus session |
-| `POST` | `/api/sessions/{id}/complete` | Mark session as completed |
-| `POST` | `/api/sessions/{id}/abandon` | Abandon current session |
-| `GET` | `/api/sessions/active` | Get current active session |
-| `GET` | `/api/sessions/history` | Get session history |
+| `POST` | `/api/sessions` | Create a new focus session |
+| `GET` | `/api/sessions` | Get session history |
+| `GET` | `/api/sessions/current` | Get current active session |
+| `GET` | `/api/sessions/{id}` | Get a specific session |
+| `PATCH` | `/api/sessions/{id}` | Update session (complete/abandon) |
+| `POST` | `/api/sessions/{id}/distractions` | Log a distraction |
 
 ---
 
@@ -322,6 +322,13 @@ curl -X POST http://localhost:8080/api/auth/signup \
 ---
 
 ## 📝 Recent Changes
+
+### v1.4.0 — MVP Single-User Focus (January 2026)
+
+- 🎯 **Removed Groups** — Focused on single-user perfection
+- 📝 **Distraction Logging** — Normalized data model for tracking distractions
+- 🔧 **REST-Correct API** — Proper POST/GET/PATCH endpoints
+- 🧹 **Cleanup** — Removed WebSockets, group components, and squad features
 
 ### v1.3.0 — Group Focus Module (January 2026)
 
