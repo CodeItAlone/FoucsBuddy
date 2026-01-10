@@ -30,12 +30,5 @@ public class User {
     @EqualsAndHashCode.Exclude
     private Streak streak;
 
-    @ManyToMany(mappedBy = "members", fetch = FetchType.LAZY)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private java.util.List<Group> groups = new java.util.ArrayList<>();
-
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    // Note: No sessions list here to avoid circular dependencies
 }
