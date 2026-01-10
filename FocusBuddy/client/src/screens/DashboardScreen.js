@@ -13,9 +13,7 @@ import { useTheme } from '../services/ThemeContext';
 import { useAuth } from '../services/AuthContext';
 import Sidebar from '../components/Sidebar';
 import InlineSession from '../components/InlineSession';
-import LiveSquadWidget from '../components/LiveSquadWidget';
 import QuickActionHeader from '../components/QuickActionHeader';
-import GroupMilestoneToast from '../components/GroupMilestoneToast';
 import CompactDailySummary from '../components/CompactDailySummary';
 import InteractiveTimeline from '../components/TimelineChart';
 import ProductivityHeatmap from '../components/ProductivityHeatmap';
@@ -41,9 +39,7 @@ export default function DashboardScreen({ navigation }) {
     const [sessionTaskName, setSessionTaskName] = useState('');
     const [showSetupForm, setShowSetupForm] = useState(false);
 
-    // Toast state
-    const [showMilestoneToast, setShowMilestoneToast] = useState(false);
-    const [milestoneData, setMilestoneData] = useState({ name: '', avatar: '' });
+
 
     const inlineSessionRef = useRef(null);
 
@@ -78,19 +74,7 @@ export default function DashboardScreen({ navigation }) {
         setIsSessionActive(false);
     };
 
-    const handleHighFive = () => {
-        console.log('High five sent!');
-        // In real app, send API request
-    };
 
-    // Demo: Show milestone toast after 10 seconds
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            setMilestoneData({ name: 'Alex Chen', avatar: '👨‍💻' });
-            setShowMilestoneToast(true);
-        }, 10000);
-        return () => clearTimeout(timer);
-    }, []);
 
     return (
         <View style={styles.container}>
@@ -199,22 +183,7 @@ export default function DashboardScreen({ navigation }) {
                 </ScrollView>
             </View>
 
-            {/* Right Sidebar - Live Squad Widget (desktop only) */}
-            {isDesktop && (
-                <View style={styles.squadSidebar}>
-                    <LiveSquadWidget onHighFive={handleHighFive} />
-                </View>
-            )}
 
-            {/* Group Milestone Toast */}
-            <GroupMilestoneToast
-                visible={showMilestoneToast}
-                memberName={milestoneData.name}
-                memberAvatar={milestoneData.avatar}
-                duration="1 hour"
-                onHighFive={handleHighFive}
-                onDismiss={() => setShowMilestoneToast(false)}
-            />
         </View>
     );
 }
