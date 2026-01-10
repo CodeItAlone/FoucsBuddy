@@ -9,9 +9,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import SessionScreen from './src/screens/SessionScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
-import GroupsScreen from './src/screens/GroupsScreen';
-import GroupDetailScreen from './src/screens/GroupDetailScreen';
-import CreateGroupScreen from './src/screens/CreateGroupScreen';
+
 import { AuthProvider, useAuth } from './src/services/AuthContext';
 import { ThemeProvider, useTheme } from './src/services/ThemeContext';
 
@@ -43,9 +41,6 @@ function RootNavigator() {
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="Session" component={SessionScreen} />
-            <Stack.Screen name="Groups" component={GroupsScreen} />
-            <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
-            <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
           </>
         ) : (
           <>
