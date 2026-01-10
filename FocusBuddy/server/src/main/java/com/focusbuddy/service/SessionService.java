@@ -2,15 +2,14 @@ package com.focusbuddy.service;
 
 import com.focusbuddy.exception.ResourceNotFoundException;
 import com.focusbuddy.exception.UnauthorizedException;
-import com.focusbuddy.model.Group;
+import com.focusbuddy.model.DistractionLog;
 import com.focusbuddy.model.Session;
 import com.focusbuddy.model.Session.SessionStatus;
 import com.focusbuddy.model.User;
-import com.focusbuddy.model.dto.SessionEvent;
+import com.focusbuddy.repository.DistractionLogRepository;
 import com.focusbuddy.repository.SessionRepository;
 import com.focusbuddy.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +24,14 @@ public class SessionService {
 
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
+    private final DistractionLogRepository distractionLogRepository;
     private final StreakService streakService;
-    private final SimpMessagingTemplate messagingTemplate;
 
+    /**
+     * Create a new focus session
+     */
     @Transactional
-    public Session startSession(Long userId, String taskDescription, int durationMinutes) {
+    public Session createSession(Long userId, String taskDescription, int durationMinutes) {
         Optional<Session> activeSession = sessionRepository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE);
         if (activeSession.isPresent()) {
             throw new IllegalStateException("User already has an active session.");
@@ -45,59 +47,83 @@ public class SessionService {
         session.setPlannedDuration(durationMinutes);
         session.setStartedAt(LocalDateTime.now());
 
-        Session savedSession = sessionRepository.save(session);
-        broadcastSessionUpdate(savedSession, user, durationMinutes);
-
-        return savedSession;
+        return sessionRepository.save(session);
     }
 
+    /**
+     * Get a specific session by ID (with ownership check)
+     */
+    public Session getSession(Long userId, Long sessionId) {
+        return getSessionWithOwnershipCheck(userId, sessionId);
+    }
+
+    /**
+     * Update session status (complete or abandon)
+     */
     @Transactional
-    public Session completeSession(Long userId, Long sessionId, String reflection) {
+    public Session updateSession(Long userId, Long sessionId, SessionStatus newStatus, String reflection) {
         Session session = getSessionWithOwnershipCheck(userId, sessionId);
 
         if (session.getStatus() != SessionStatus.ACTIVE) {
             throw new IllegalStateException("Session is not active.");
+        }
+
+        if (newStatus == null) {
+            throw new IllegalArgumentException("Status is required for update.");
         }
 
         LocalDateTime now = LocalDateTime.now();
         session.setEndedAt(now);
+        session.setReflection(reflection);
 
-        long minutesElapsed = Duration.between(session.getStartedAt(), now).toMinutes();
-        int duration = session.getPlannedDuration();
-
-        if (minutesElapsed < duration) {
-            session.setStatus(SessionStatus.ABANDONED);
-            session.setDistractionLog("Abandoned early. " + reflection);
-        } else {
-            session.setStatus(SessionStatus.COMPLETED);
-            session.setDistractionLog(reflection);
-            streakService.updateStreak(session.getUser().getId());
+        switch (newStatus) {
+            case COMPLETED -> {
+                long minutesElapsed = Duration.between(session.getStartedAt(), now).toMinutes();
+                if (minutesElapsed < session.getPlannedDuration()) {
+                    // Cannot complete before planned duration
+                    session.setStatus(SessionStatus.ABANDONED);
+                    session.setReflection("Ended early. " + (reflection != null ? reflection : ""));
+                } else {
+                    session.setStatus(SessionStatus.COMPLETED);
+                    streakService.updateStreak(session.getUser().getId());
+                }
+            }
+            case ABANDONED -> session.setStatus(SessionStatus.ABANDONED);
+            default -> throw new IllegalArgumentException("Invalid status: " + newStatus);
         }
 
-        Session savedSession = sessionRepository.save(session);
-        broadcastSessionUpdate(savedSession, session.getUser(), 0);
-        return savedSession;
+        return sessionRepository.save(session);
     }
 
+    /**
+     * Add a distraction log to an active session
+     */
     @Transactional
-    public Session abandonSession(Long userId, Long sessionId) {
+    public DistractionLog addDistraction(Long userId, Long sessionId, String description) {
         Session session = getSessionWithOwnershipCheck(userId, sessionId);
 
         if (session.getStatus() != SessionStatus.ACTIVE) {
-            throw new IllegalStateException("Session is not active.");
+            throw new IllegalStateException("Can only add distractions to an active session.");
         }
 
-        session.setEndedAt(LocalDateTime.now());
-        session.setStatus(SessionStatus.ABANDONED);
-        Session savedSession = sessionRepository.save(session);
-        broadcastSessionUpdate(savedSession, session.getUser(), 0);
-        return savedSession;
+        DistractionLog log = new DistractionLog();
+        log.setSession(session);
+        log.setDescription(description);
+        log.setLoggedAt(LocalDateTime.now());
+
+        return distractionLogRepository.save(log);
     }
 
+    /**
+     * Get the current active session for a user
+     */
     public Optional<Session> getActiveSession(Long userId) {
         return sessionRepository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE);
     }
 
+    /**
+     * Get all sessions for a user (history)
+     */
     public List<Session> getSessionHistory(Long userId) {
         return sessionRepository.findByUserId(userId);
     }
@@ -107,23 +133,9 @@ public class SessionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
 
         if (!session.getUser().getId().equals(userId)) {
-            throw new UnauthorizedException("You do not have permission to modify this session");
+            throw new UnauthorizedException("You do not have permission to access this session");
         }
 
         return session;
-    }
-
-    private void broadcastSessionUpdate(Session session, User user, int timeLeft) {
-        SessionEvent event = new SessionEvent(
-                user.getHandle(),
-                session.getStatus().name(),
-                session.getTaskDescription(),
-                timeLeft);
-
-        for (Group group : user.getGroups()) {
-            messagingTemplate.convertAndSend("/topic/group/" + group.getId(), event);
-        }
-
-        messagingTemplate.convertAndSend("/topic/user/" + user.getId(), event);
     }
 }
