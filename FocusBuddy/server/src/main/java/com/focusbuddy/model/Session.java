@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import lombok.EqualsAndHashCode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -36,7 +39,12 @@ public class Session {
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
 
-    private String distractionLog;
+    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<DistractionLog> distractionLogs = new ArrayList<>();
+
+    private String reflection; // Optional completion reflection
 
     public enum SessionStatus {
         ACTIVE, COMPLETED, ABANDONED
