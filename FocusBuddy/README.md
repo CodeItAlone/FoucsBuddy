@@ -1,6 +1,6 @@
 # FocusBuddy
 
-Full-stack productivity app with focus sessions, streak tracking, and real-time squad status. Spring Boot backend + React Native (Expo) frontend.
+Full-stack productivity app with focus sessions, streak tracking, and distraction logging. Spring Boot backend + React Native (Expo) frontend.
 
 ## Tech Stack
 
@@ -9,7 +9,6 @@ Full-stack productivity app with focus sessions, streak tracking, and real-time 
 | Backend   | Java 17, Spring Boot 3.2, JPA, H2/PostgreSQL |
 | Frontend  | React Native 0.81, Expo 54, Axios         |
 | Auth      | JWT (HS512), BCrypt                       |
-| Real-time | WebSocket (STOMP/SockJS)                  |
 
 ## Run Locally
 
@@ -44,10 +43,9 @@ Press `w` for web, `a` for Android, `i` for iOS.
 
 ## Screenshots
 
-<!-- Add screenshots here -->
 | Light Mode | Dark Mode |
 |------------|-----------|
-| ![Light](docs/screenshots/dashboard-light.png) | ![Dark](docs/screenshots/dashboard-dark.png) |
+| ![Light](screenshots/dashboard_light.png) | ![Dark](screenshots/dashboard_dark.png) |
 
 ## Project Structure
 
@@ -55,6 +53,7 @@ Press `w` for web, `a` for Android, `i` for iOS.
 FocusBuddy/
 ├── client/          # React Native app
 │   └── src/
+│       ├── api/
 │       ├── components/
 │       ├── screens/
 │       └── services/
@@ -68,16 +67,19 @@ FocusBuddy/
 
 ## API Endpoints
 
-| Method | Endpoint                      | Description         |
-|--------|-------------------------------|---------------------|
-| POST   | `/api/auth/signup`            | Register user       |
-| POST   | `/api/auth/login`             | Get JWT token       |
-| POST   | `/api/sessions/start`         | Start focus session |
-| POST   | `/api/sessions/{id}/complete` | Complete session    |
-| GET    | `/api/sessions/history`       | Session history     |
+| Method | Endpoint                      | Description           |
+|--------|-------------------------------|-----------------------|
+| POST   | `/api/auth/signup`            | Register user         |
+| POST   | `/api/auth/login`             | Get JWT token         |
+| POST   | `/api/sessions`               | Create focus session  |
+| GET    | `/api/sessions`               | Get session history   |
+| GET    | `/api/sessions/current`       | Get active session    |
+| PATCH  | `/api/sessions/{id}`          | Update session status |
+| POST   | `/api/sessions/{id}/distractions` | Log a distraction |
 
 > All `/api/sessions/*` endpoints require `Authorization: Bearer <token>`
 
 ## License
 
 MIT
+
