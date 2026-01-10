@@ -1,14 +1,18 @@
 package com.focusbuddy.controller;
 
-import com.focusbuddy.dto.request.CompleteSessionRequest;
-import com.focusbuddy.dto.request.StartSessionRequest;
+import com.focusbuddy.dto.request.AddDistractionRequest;
+import com.focusbuddy.dto.request.CreateSessionRequest;
+import com.focusbuddy.dto.request.UpdateSessionRequest;
+import com.focusbuddy.dto.response.DistractionLogResponse;
 import com.focusbuddy.dto.response.SessionResponse;
 import com.focusbuddy.mapper.SessionMapper;
+import com.focusbuddy.model.DistractionLog;
 import com.focusbuddy.model.Session;
 import com.focusbuddy.security.CurrentUserService;
 import com.focusbuddy.service.SessionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,39 +29,36 @@ public class SessionController {
     private final SessionMapper sessionMapper;
     private final CurrentUserService currentUserService;
 
-    @PostMapping("/start")
-    public ResponseEntity<SessionResponse> startSession(
+    /**
+     * POST /api/sessions - Create a new focus session
+     */
+    @PostMapping
+    public ResponseEntity<SessionResponse> createSession(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody StartSessionRequest request) {
+            @Valid @RequestBody CreateSessionRequest request) {
 
         Long userId = currentUserService.getUserId(userDetails);
-        Session session = sessionService.startSession(userId, request.task(), request.duration());
-        return ResponseEntity.ok(sessionMapper.toResponse(session));
+        Session session = sessionService.createSession(userId, request.task(), request.duration());
+        return ResponseEntity.status(HttpStatus.CREATED).body(sessionMapper.toResponse(session));
     }
 
-    @PostMapping("/{id}/complete")
-    public ResponseEntity<SessionResponse> completeSession(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long id,
-            @RequestBody CompleteSessionRequest request) {
+    /**
+     * GET /api/sessions - Get all sessions for the current user
+     */
+    @GetMapping
+    public ResponseEntity<List<SessionResponse>> getSessions(
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = currentUserService.getUserId(userDetails);
-        Session session = sessionService.completeSession(userId, id, request.reflection());
-        return ResponseEntity.ok(sessionMapper.toResponse(session));
+        List<Session> sessions = sessionService.getSessionHistory(userId);
+        return ResponseEntity.ok(sessionMapper.toResponseList(sessions));
     }
 
-    @PostMapping("/{id}/abandon")
-    public ResponseEntity<SessionResponse> abandonSession(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long id) {
-
-        Long userId = currentUserService.getUserId(userDetails);
-        Session session = sessionService.abandonSession(userId, id);
-        return ResponseEntity.ok(sessionMapper.toResponse(session));
-    }
-
-    @GetMapping("/active")
-    public ResponseEntity<SessionResponse> getActiveSession(
+    /**
+     * GET /api/sessions/current - Get the current active session (if any)
+     */
+    @GetMapping("/current")
+    public ResponseEntity<SessionResponse> getCurrentSession(
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = currentUserService.getUserId(userDetails);
@@ -67,12 +68,45 @@ public class SessionController {
                 .orElse(ResponseEntity.noContent().build());
     }
 
-    @GetMapping("/history")
-    public ResponseEntity<List<SessionResponse>> getSessionHistory(
-            @AuthenticationPrincipal UserDetails userDetails) {
+    /**
+     * GET /api/sessions/{id} - Get a specific session by ID
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<SessionResponse> getSession(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id) {
 
         Long userId = currentUserService.getUserId(userDetails);
-        List<Session> sessions = sessionService.getSessionHistory(userId);
-        return ResponseEntity.ok(sessionMapper.toResponseList(sessions));
+        Session session = sessionService.getSession(userId, id);
+        return ResponseEntity.ok(sessionMapper.toResponse(session));
+    }
+
+    /**
+     * PATCH /api/sessions/{id} - Update session status (complete or abandon)
+     */
+    @PatchMapping("/{id}")
+    public ResponseEntity<SessionResponse> updateSession(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id,
+            @RequestBody UpdateSessionRequest request) {
+
+        Long userId = currentUserService.getUserId(userDetails);
+        Session session = sessionService.updateSession(userId, id, request.status(), request.reflection());
+        return ResponseEntity.ok(sessionMapper.toResponse(session));
+    }
+
+    /**
+     * POST /api/sessions/{id}/distractions - Add a distraction log to a session
+     */
+    @PostMapping("/{id}/distractions")
+    public ResponseEntity<DistractionLogResponse> addDistraction(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id,
+            @Valid @RequestBody AddDistractionRequest request) {
+
+        Long userId = currentUserService.getUserId(userDetails);
+        DistractionLog log = sessionService.addDistraction(userId, id, request.description());
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                new DistractionLogResponse(log.getId(), log.getDescription(), log.getLoggedAt()));
     }
 }
