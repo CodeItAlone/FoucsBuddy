@@ -1,18 +1,17 @@
 package com.focusbuddy.dto;
 
 import com.focusbuddy.model.User;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 
-@Data
-@AllArgsConstructor
-public class UserResponse {
-    private Long id;
-    private String email;
-    private String handle;
-    private Integer currentStreak;
-    private Integer graceDaysRemaining;
-
+/**
+ * User response DTO with role included.
+ */
+public record UserResponse(
+        Long id,
+        String email,
+        String handle,
+        String role,
+        Integer currentStreak,
+        Integer graceDaysRemaining) {
     public static UserResponse fromUser(User user) {
         int streak = 0;
         int graceDays = 1;
@@ -24,6 +23,7 @@ public class UserResponse {
                 user.getId(),
                 user.getEmail(),
                 user.getHandle(),
+                user.getRole().name(),
                 streak,
                 graceDays);
     }

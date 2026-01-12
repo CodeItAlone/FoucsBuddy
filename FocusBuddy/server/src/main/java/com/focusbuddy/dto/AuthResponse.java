@@ -1,11 +1,15 @@
 package com.focusbuddy.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-@Data
-@AllArgsConstructor
-public class AuthResponse {
-    private String token;
-    private UserResponse user;
+/**
+ * Authentication response with access and refresh tokens.
+ */
+public record AuthResponse(
+        String accessToken,
+        String refreshToken,
+        String tokenType,
+        long expiresIn,
+        UserResponse user) {
+    public AuthResponse(String accessToken, String refreshToken, long expiresIn, UserResponse user) {
+        this(accessToken, refreshToken, "Bearer", expiresIn, user);
+    }
 }
