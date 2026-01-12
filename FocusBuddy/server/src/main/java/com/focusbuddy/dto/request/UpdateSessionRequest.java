@@ -1,8 +1,8 @@
 package com.focusbuddy.dto.request;
 
-import com.focusbuddy.model.Session.SessionStatus;
-
+/**
+ * Request to end a session with optional reflection.
+ */
 public record UpdateSessionRequest(
-        SessionStatus status,
-        String reflection) {
+                String reflection) {
 }

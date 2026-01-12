@@ -20,8 +20,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST controller for focus session management.
+ * Session lifecycle: STARTED → PAUSED → RESUMED → ENDED
+ */
 @RestController
-@RequestMapping("/api/sessions")
+@RequestMapping("/api/v1/sessions")
 @RequiredArgsConstructor
 public class SessionController {
 
@@ -30,20 +34,20 @@ public class SessionController {
     private final CurrentUserService currentUserService;
 
     /**
-     * POST /api/sessions - Create a new focus session
+     * POST /api/v1/sessions - Start a new focus session
      */
     @PostMapping
-    public ResponseEntity<SessionResponse> createSession(
+    public ResponseEntity<SessionResponse> startSession(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateSessionRequest request) {
 
         Long userId = currentUserService.getUserId(userDetails);
-        Session session = sessionService.createSession(userId, request.task(), request.duration());
+        Session session = sessionService.startSession(userId, request.task(), request.duration());
         return ResponseEntity.status(HttpStatus.CREATED).body(sessionMapper.toResponse(session));
     }
 
     /**
-     * GET /api/sessions - Get all sessions for the current user
+     * GET /api/v1/sessions - Get all sessions for the current user
      */
     @GetMapping
     public ResponseEntity<List<SessionResponse>> getSessions(
@@ -55,7 +59,7 @@ public class SessionController {
     }
 
     /**
-     * GET /api/sessions/current - Get the current active session (if any)
+     * GET /api/v1/sessions/current - Get the current active session (if any)
      */
     @GetMapping("/current")
     public ResponseEntity<SessionResponse> getCurrentSession(
@@ -69,7 +73,7 @@ public class SessionController {
     }
 
     /**
-     * GET /api/sessions/{id} - Get a specific session by ID
+     * GET /api/v1/sessions/{id} - Get a specific session by ID
      */
     @GetMapping("/{id}")
     public ResponseEntity<SessionResponse> getSession(
@@ -82,21 +86,48 @@ public class SessionController {
     }
 
     /**
-     * PATCH /api/sessions/{id} - Update session status (complete or abandon)
+     * POST /api/v1/sessions/{id}/pause - Pause an active session
      */
-    @PatchMapping("/{id}")
-    public ResponseEntity<SessionResponse> updateSession(
+    @PostMapping("/{id}/pause")
+    public ResponseEntity<SessionResponse> pauseSession(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long id,
-            @RequestBody UpdateSessionRequest request) {
+            @PathVariable Long id) {
 
         Long userId = currentUserService.getUserId(userDetails);
-        Session session = sessionService.updateSession(userId, id, request.status(), request.reflection());
+        Session session = sessionService.pauseSession(userId, id);
         return ResponseEntity.ok(sessionMapper.toResponse(session));
     }
 
     /**
-     * POST /api/sessions/{id}/distractions - Add a distraction log to a session
+     * POST /api/v1/sessions/{id}/resume - Resume a paused session
+     */
+    @PostMapping("/{id}/resume")
+    public ResponseEntity<SessionResponse> resumeSession(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id) {
+
+        Long userId = currentUserService.getUserId(userDetails);
+        Session session = sessionService.resumeSession(userId, id);
+        return ResponseEntity.ok(sessionMapper.toResponse(session));
+    }
+
+    /**
+     * POST /api/v1/sessions/{id}/end - End a session
+     */
+    @PostMapping("/{id}/end")
+    public ResponseEntity<SessionResponse> endSession(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id,
+            @RequestBody(required = false) UpdateSessionRequest request) {
+
+        Long userId = currentUserService.getUserId(userDetails);
+        String reflection = request != null ? request.reflection() : null;
+        Session session = sessionService.endSession(userId, id, reflection);
+        return ResponseEntity.ok(sessionMapper.toResponse(session));
+    }
+
+    /**
+     * POST /api/v1/sessions/{id}/distractions - Add a distraction log to a session
      */
     @PostMapping("/{id}/distractions")
     public ResponseEntity<DistractionLogResponse> addDistraction(

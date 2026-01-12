@@ -4,7 +4,7 @@ import com.focusbuddy.exception.ResourceNotFoundException;
 import com.focusbuddy.exception.UnauthorizedException;
 import com.focusbuddy.model.DistractionLog;
 import com.focusbuddy.model.Session;
-import com.focusbuddy.model.Session.SessionStatus;
+import com.focusbuddy.model.SessionState;
 import com.focusbuddy.model.User;
 import com.focusbuddy.repository.DistractionLogRepository;
 import com.focusbuddy.repository.SessionRepository;
@@ -13,11 +13,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Service for managing focus sessions with proper state machine.
+ * Valid lifecycle: STARTED → PAUSED → RESUMED → ENDED
+ */
 @Service
 @RequiredArgsConstructor
 public class SessionService {
@@ -28,13 +31,14 @@ public class SessionService {
     private final StreakService streakService;
 
     /**
-     * Create a new focus session
+     * Start a new focus session.
+     * Only one active session per user is allowed.
      */
     @Transactional
-    public Session createSession(Long userId, String taskDescription, int durationMinutes) {
-        Optional<Session> activeSession = sessionRepository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE);
+    public Session startSession(Long userId, String taskDescription, int durationMinutes) {
+        Optional<Session> activeSession = sessionRepository.findActiveSessionByUserId(userId);
         if (activeSession.isPresent()) {
-            throw new IllegalStateException("User already has an active session.");
+            throw new IllegalStateException("User already has an active session");
         }
 
         User user = userRepository.findById(userId)
@@ -42,7 +46,7 @@ public class SessionService {
 
         Session session = new Session();
         session.setUser(user);
-        session.setStatus(SessionStatus.ACTIVE);
+        session.setStatus(SessionState.STARTED);
         session.setTaskDescription(taskDescription);
         session.setPlannedDuration(durationMinutes);
         session.setStartedAt(LocalDateTime.now());
@@ -51,59 +55,59 @@ public class SessionService {
     }
 
     /**
-     * Get a specific session by ID (with ownership check)
+     * Pause an active session.
+     */
+    @Transactional
+    public Session pauseSession(Long userId, Long sessionId) {
+        Session session = getSessionWithOwnershipCheck(userId, sessionId);
+        session.transitionTo(SessionState.PAUSED);
+        return sessionRepository.save(session);
+    }
+
+    /**
+     * Resume a paused session.
+     */
+    @Transactional
+    public Session resumeSession(Long userId, Long sessionId) {
+        Session session = getSessionWithOwnershipCheck(userId, sessionId);
+        session.transitionTo(SessionState.RESUMED);
+        return sessionRepository.save(session);
+    }
+
+    /**
+     * End a session (complete or abandon).
+     */
+    @Transactional
+    public Session endSession(Long userId, Long sessionId, String reflection) {
+        Session session = getSessionWithOwnershipCheck(userId, sessionId);
+
+        session.setReflection(reflection);
+        session.transitionTo(SessionState.ENDED);
+
+        Session savedSession = sessionRepository.save(session);
+
+        // Update streak on session completion
+        streakService.updateStreak(userId);
+
+        return savedSession;
+    }
+
+    /**
+     * Get a specific session by ID (with ownership check).
      */
     public Session getSession(Long userId, Long sessionId) {
         return getSessionWithOwnershipCheck(userId, sessionId);
     }
 
     /**
-     * Update session status (complete or abandon)
-     */
-    @Transactional
-    public Session updateSession(Long userId, Long sessionId, SessionStatus newStatus, String reflection) {
-        Session session = getSessionWithOwnershipCheck(userId, sessionId);
-
-        if (session.getStatus() != SessionStatus.ACTIVE) {
-            throw new IllegalStateException("Session is not active.");
-        }
-
-        if (newStatus == null) {
-            throw new IllegalArgumentException("Status is required for update.");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        session.setEndedAt(now);
-        session.setReflection(reflection);
-
-        switch (newStatus) {
-            case COMPLETED -> {
-                long minutesElapsed = Duration.between(session.getStartedAt(), now).toMinutes();
-                if (minutesElapsed < session.getPlannedDuration()) {
-                    // Cannot complete before planned duration
-                    session.setStatus(SessionStatus.ABANDONED);
-                    session.setReflection("Ended early. " + (reflection != null ? reflection : ""));
-                } else {
-                    session.setStatus(SessionStatus.COMPLETED);
-                    streakService.updateStreak(session.getUser().getId());
-                }
-            }
-            case ABANDONED -> session.setStatus(SessionStatus.ABANDONED);
-            default -> throw new IllegalArgumentException("Invalid status: " + newStatus);
-        }
-
-        return sessionRepository.save(session);
-    }
-
-    /**
-     * Add a distraction log to an active session
+     * Add a distraction log to an active session.
      */
     @Transactional
     public DistractionLog addDistraction(Long userId, Long sessionId, String description) {
         Session session = getSessionWithOwnershipCheck(userId, sessionId);
 
-        if (session.getStatus() != SessionStatus.ACTIVE) {
-            throw new IllegalStateException("Can only add distractions to an active session.");
+        if (!session.isActive()) {
+            throw new IllegalStateException("Can only add distractions to an active session");
         }
 
         DistractionLog log = new DistractionLog();
@@ -115,17 +119,17 @@ public class SessionService {
     }
 
     /**
-     * Get the current active session for a user
+     * Get the current active session for a user.
      */
     public Optional<Session> getActiveSession(Long userId) {
-        return sessionRepository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE);
+        return sessionRepository.findActiveSessionByUserId(userId);
     }
 
     /**
-     * Get all sessions for a user (history)
+     * Get all sessions for a user (history).
      */
     public List<Session> getSessionHistory(Long userId) {
-        return sessionRepository.findByUserId(userId);
+        return sessionRepository.findByUserIdOrderByStartedAtDesc(userId);
     }
 
     private Session getSessionWithOwnershipCheck(Long userId, Long sessionId) {
