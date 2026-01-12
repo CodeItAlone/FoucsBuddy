@@ -1,19 +1,19 @@
 package com.focusbuddy.service;
 
-import com.focusbuddy.dto.AuthResponse;
-import com.focusbuddy.dto.LoginRequest;
-import com.focusbuddy.dto.SignupRequest;
-import com.focusbuddy.dto.UserResponse;
+import com.focusbuddy.dto.*;
 import com.focusbuddy.exception.UnauthorizedException;
-import com.focusbuddy.model.Streak;
-import com.focusbuddy.model.User;
+import com.focusbuddy.model.*;
 import com.focusbuddy.repository.UserRepository;
 import com.focusbuddy.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Authentication service with access + refresh token support.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -21,55 +21,96 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
+
+    @Value("${app.jwt.access-expiration-ms}")
+    private long accessExpirationMs;
 
     @Transactional
-    public AuthResponse signup(SignupRequest request) {
-        // Check if email already exists
+    public AuthResponse signup(SignupRequest request, String deviceInfo) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already taken");
         }
 
-        // Check if handle already exists
         if (userRepository.findByHandle(request.getHandle()).isPresent()) {
             throw new IllegalArgumentException("Handle already taken");
         }
 
-        // Create new user with hashed password
         User newUser = new User();
         newUser.setEmail(request.getEmail());
         newUser.setHandle(request.getHandle());
         newUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        newUser.setRole(Role.USER);
 
-        // Initialize streak for new user
         Streak streak = new Streak();
         streak.setUser(newUser);
         newUser.setStreak(streak);
 
         User savedUser = userRepository.save(newUser);
 
-        // Generate JWT token
-        String token = jwtTokenProvider.generateTokenFromUserId(savedUser.getId(), savedUser.getEmail());
-
-        return new AuthResponse(token, UserResponse.fromUser(savedUser));
+        return generateAuthResponse(savedUser, deviceInfo);
     }
 
-    public AuthResponse login(LoginRequest request) {
+    @Transactional
+    public AuthResponse login(LoginRequest request, String deviceInfo) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
-        // Verify password using BCrypt
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new UnauthorizedException("Invalid credentials");
         }
 
-        // Generate JWT token
-        String token = jwtTokenProvider.generateTokenFromUserId(user.getId(), user.getEmail());
+        return generateAuthResponse(user, deviceInfo);
+    }
 
-        return new AuthResponse(token, UserResponse.fromUser(user));
+    @Transactional
+    public TokenResponse refresh(String refreshToken, String deviceInfo) {
+        RefreshToken verified = refreshTokenService.verifyRefreshToken(refreshToken)
+                .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
+
+        User user = verified.getUser();
+
+        RefreshToken newToken = refreshTokenService.rotateRefreshToken(
+                refreshToken, user, deviceInfo);
+
+        String accessToken = jwtTokenProvider.generateAccessToken(
+                user.getId(), user.getEmail(), user.getRole());
+
+        return new TokenResponse(accessToken, newToken.getTokenHash(), accessExpirationMs / 1000);
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        refreshTokenService.revokeToken(refreshToken);
+    }
+
+    @Transactional
+    public void logoutAll(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        refreshTokenService.revokeAllUserTokens(user);
     }
 
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    private AuthResponse generateAuthResponse(User user, String deviceInfo) {
+        String accessToken = jwtTokenProvider.generateAccessToken(
+                user.getId(), user.getEmail(), user.getRole());
+
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, deviceInfo);
+
+        return new AuthResponse(
+                accessToken,
+                refreshToken.getTokenHash(),
+                accessExpirationMs / 1000,
+                UserResponse.fromUser(user));
     }
 }
