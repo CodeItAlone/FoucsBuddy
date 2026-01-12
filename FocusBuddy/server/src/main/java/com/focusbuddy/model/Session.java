@@ -6,13 +6,20 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.EqualsAndHashCode;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+/**
+ * Focus session entity with state machine lifecycle.
+ * Valid states: STARTED → PAUSED → RESUMED → ENDED
+ */
 @Entity
-@Table(name = "sessions")
+@Table(name = "focus_sessions", indexes = {
+        @Index(name = "idx_sessions_user_start", columnList = "user_id, startedAt DESC")
+})
 @Data
 @NoArgsConstructor
 public class Session {
@@ -27,26 +34,80 @@ public class Session {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private SessionStatus status;
+    @Column(nullable = false, length = 20)
+    private SessionState status = SessionState.STARTED;
 
-    @Column(nullable = false, length = 60)
+    @Column(nullable = false, length = 100)
     private String taskDescription;
 
     @Column(nullable = false)
-    private int plannedDuration; // 25, 45, or 60
+    private int plannedDuration;
 
+    @Column(nullable = false)
     private LocalDateTime startedAt;
+
+    private LocalDateTime pausedAt;
+    private LocalDateTime resumedAt;
     private LocalDateTime endedAt;
+
+    @Column(nullable = false)
+    private int totalPausedSeconds = 0;
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<DistractionLog> distractionLogs = new ArrayList<>();
 
-    private String reflection; // Optional completion reflection
+    @Column(columnDefinition = "TEXT")
+    private String reflection;
 
-    public enum SessionStatus {
-        ACTIVE, COMPLETED, ABANDONED
+    /**
+     * Calculate actual focus duration excluding paused time.
+     */
+    public long getActualFocusSeconds() {
+        if (startedAt == null)
+            return 0;
+        LocalDateTime end = endedAt != null ? endedAt : LocalDateTime.now();
+        long totalSeconds = Duration.between(startedAt, end).getSeconds();
+        return Math.max(0, totalSeconds - totalPausedSeconds);
+    }
+
+    /**
+     * Transition to new state with validation.
+     */
+    public void transitionTo(SessionState newState) {
+        if (!status.canTransitionTo(newState)) {
+            throw new IllegalStateException(
+                    "Cannot transition from " + status + " to " + newState);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        switch (newState) {
+            case PAUSED -> {
+                pausedAt = now;
+            }
+            case RESUMED -> {
+                if (pausedAt != null) {
+                    totalPausedSeconds += (int) Duration.between(pausedAt, now).getSeconds();
+                }
+                resumedAt = now;
+                pausedAt = null;
+            }
+            case ENDED -> {
+                if (pausedAt != null) {
+                    totalPausedSeconds += (int) Duration.between(pausedAt, now).getSeconds();
+                }
+                endedAt = now;
+            }
+            default -> {
+            }
+        }
+
+        status = newState;
+    }
+
+    public boolean isActive() {
+        return status.isActive();
     }
 }
