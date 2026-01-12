@@ -35,7 +35,7 @@ import java.util.List;
  * @author FocusBuddy Team
  */
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/api/v1/tasks")
 @RequiredArgsConstructor
 public class TaskController {
 
