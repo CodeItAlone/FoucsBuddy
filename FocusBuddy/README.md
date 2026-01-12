@@ -1,140 +1,127 @@
 # FocusBuddy
 
-Full-stack productivity app with focus sessions, task management, streak tracking, and distraction logging. Spring Boot backend + React Native (Expo) frontend.
+Full-stack productivity app with focus sessions, task management, streak tracking, and distraction logging. Built with robustness, security, and scalability in mind.
 
 ## Tech Stack
 
 | Layer     | Tech                                      |
 |-----------|-------------------------------------------|
-| Backend   | Java 17, Spring Boot 3.2, JPA, H2/PostgreSQL |
-| Frontend  | React Native 0.81, Expo 54, Axios         |
-| Auth      | JWT (HS512), BCrypt                       |
+| **Backend**   | Java 23, Spring Boot 3.2, JPA, Hibernate |
+| **Database**  | PostgreSQL (Prod), H2 (Dev), Flyway Migrations |
+| **Frontend**  | React Native (Expo), Axios                |
+| **Auth**      | JWT (HS256), Refresh Tokens, Role-Based Access |
+| **Tools**     | Maven, npm, Git                           |
+
+## Features
+
+- ⏱️ **Focus Sessions**: Track work duration with Pause/Resume capabilities.
+- 📊 **Productivity Stats**: Daily/Weekly/Monthly analytics and timelines.
+- 🔥 **Streaks**: Maintain daily consistency.
+- 🔒 **Secure Auth**: JWT access tokens (short-lived) + Refresh tokens (rotating, secure).
+- 📝 **Task Management**: Prioritize tasks (High/Medium/Low).
+- 📉 **Distraction Logging**: Track interruptions during sessions.
 
 ## Run Locally
 
 ### Prerequisites
-
-- Java 17+
+- Java 23+
 - Node.js 18+
-- PostgreSQL 15+ (optional, for production)
 
-### Backend
+### 1. Backend (Spring Boot)
 
+The backend uses **Spring Profiles** to switch between H2 (dev) and PostgreSQL (prod).
+
+**Development Mode (H2 Database):**
+Runs with an embedded file-based H2 database by default.
 ```bash
 cd server
-
 # Windows
+$env:JAVA_HOME = 'C:\Program Files\Java\jdk-23'
 .\mvnw.cmd spring-boot:run
 
-# macOS/Linux
+# Mac/Linux
 ./mvnw spring-boot:run
 ```
+*API runs at `http://localhost:8080`*
 
-API runs at `http://localhost:8080`
+**Production Mode (PostgreSQL):**
+Requires environment variables.
+```bash
+export DATABASE_URL=jdbc:postgresql://localhost:5432/focusbuddy
+export DATABASE_USERNAME=postgres
+export DATABASE_PASSWORD=secret
+export JWT_SECRET=your_secure_256bit_secret_key
+export SPRING_PROFILES_ACTIVE=prod
 
-> **Note**: By default, the app uses H2 file-based database (`./data/focusbuddy`). Data persists across restarts.
+.\mvnw.cmd spring-boot:run
+```
 
-#### PostgreSQL Setup (Production)
-
-1. Create database:
-   ```sql
-   CREATE DATABASE focusbuddy;
-   ```
-
-2. Update `application.properties`:
-   ```properties
-   spring.datasource.url=jdbc:postgresql://localhost:5432/focusbuddy
-   spring.datasource.username=your_username
-   spring.datasource.password=your_password
-   spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
-   ```
-
-3. For production, set a secure JWT secret:
-   ```bash
-   # Generate secret
-   openssl rand -base64 64
-   
-   # Set in application.properties or environment variable
-   app.jwt.secret=<your-generated-secret>
-   ```
-
-### Frontend
+### 2. Frontend (React Native)
 
 ```bash
 cd client
 npm install
 npm start
 ```
-
 Press `w` for web, `a` for Android, `i` for iOS.
 
-## Screenshots
+## API Endpoints (v1)
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Light](screenshots/dashboard_light.png) | ![Dark](screenshots/dashboard_dark.png) |
+All endpoints are prefixed with `/api/v1`.
+
+### 🔐 Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/signup` | Register new user |
+| POST | `/auth/login` | Login (Returns Access + Refresh Token) |
+| POST | `/auth/refresh` | Get new Access Token using Refresh Token |
+| POST | `/auth/logout` | Logout (Revokes Refresh Token) |
+
+### ⏱️ Sessions
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/sessions` | Start a new session |
+| POST | `/sessions/{id}/pause` | Pause active session |
+| POST | `/sessions/{id}/resume` | Resume paused session |
+| POST | `/sessions/{id}/end` | End session (with reflection) |
+| POST | `/sessions/{id}/distractions` | Log a distraction |
+
+### 📊 Stats
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/stats?range=DAILY` | Get productivity stats (DAILY/WEEKLY/MONTHLY) |
+| GET | `/stats/timeline` | Get paginated session history |
+
+### ✅ Tasks
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/tasks` | Create task |
+| GET | `/tasks` | List tasks |
+| GET | `/tasks/count` | Get task counts |
+
+### 🔥 Streaks
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/streaks/me` | Get current user streak |
 
 ## Project Structure
 
 ```
 FocusBuddy/
 ├── client/          # React Native app
-│   └── src/
-│       ├── api/
-│       ├── components/
-│       ├── screens/
-│       └── services/
 └── server/          # Spring Boot API
-    ├── docs/        # API & Schema documentation
+    ├── src/main/resources/
+    │   ├── db/migration/  # Flyway SQL migrations
+    │   ├── application-dev.properties
+    │   └── application-prod.properties
     └── src/main/java/com/focusbuddy/
-        ├── controller/
-        ├── service/
-        ├── model/
-        ├── repository/
-        ├── dto/
-        ├── security/
-        └── exception/
+        ├── config/      # Security & App Config
+        ├── controller/  # API V1 Controllers
+        ├── model/       # JPA Entities
+        ├── repository/  # Data Access
+        ├── service/     # Business Logic
+        └── security/    # JWT & Auth Filters
 ```
 
-## API Endpoints
-
-### Authentication
-| Method | Endpoint                      | Description           |
-|--------|-------------------------------|-----------------------|
-| POST   | `/api/auth/signup`            | Register user         |
-| POST   | `/api/auth/login`             | Get JWT token         |
-
-### Tasks
-| Method | Endpoint                      | Description           |
-|--------|-------------------------------|-----------------------|
-| POST   | `/api/tasks`                  | Create task           |
-| GET    | `/api/tasks`                  | List tasks (filterable) |
-| GET    | `/api/tasks/{id}`             | Get single task       |
-| PUT    | `/api/tasks/{id}`             | Update task           |
-| DELETE | `/api/tasks/{id}`             | Delete task           |
-| GET    | `/api/tasks/count`            | Pending task count    |
-
-### Sessions
-| Method | Endpoint                      | Description           |
-|--------|-------------------------------|-----------------------|
-| POST   | `/api/sessions`               | Create focus session  |
-| GET    | `/api/sessions`               | Get session history   |
-| GET    | `/api/sessions/current`       | Get active session    |
-| PATCH  | `/api/sessions/{id}`          | Update session status |
-| POST   | `/api/sessions/{id}/distractions` | Log a distraction |
-
-### Streaks
-| Method | Endpoint                      | Description           |
-|--------|-------------------------------|-----------------------|
-| GET    | `/api/streaks/me`             | Get current streak    |
-
-> All endpoints except `/api/auth/*` require `Authorization: Bearer <token>`
-
-## Documentation
-
-- [Database Schema](server/docs/SCHEMA.md) - ERD, table definitions, DDL
-- [API Examples](server/docs/API_EXAMPLES.md) - cURL examples for all endpoints
-
 ## License
-
 MIT
