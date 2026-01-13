@@ -21,9 +21,11 @@ public class SessionMapper {
                 session.getStatus().name(),
                 session.getTaskDescription(),
                 session.getPlannedDuration(),
+                session.getActualDuration(),
                 session.getStartedAt(),
                 session.getEndedAt(),
                 session.getReflection(),
+                session.getSessionType().name(),
                 distractionLogs);
     }
 
