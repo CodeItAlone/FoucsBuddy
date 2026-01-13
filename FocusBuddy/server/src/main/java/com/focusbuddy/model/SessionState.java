@@ -8,18 +8,19 @@ public enum SessionState {
     STARTED,
     PAUSED,
     RESUMED,
-    ENDED;
+    COMPLETED,
+    ABORTED;
 
     public boolean canTransitionTo(SessionState target) {
         return switch (this) {
-            case STARTED -> target == PAUSED || target == ENDED;
-            case PAUSED -> target == RESUMED || target == ENDED;
-            case RESUMED -> target == PAUSED || target == ENDED;
-            case ENDED -> false;
+            case STARTED -> target == PAUSED || target == COMPLETED || target == ABORTED;
+            case PAUSED -> target == RESUMED || target == COMPLETED || target == ABORTED;
+            case RESUMED -> target == PAUSED || target == COMPLETED || target == ABORTED;
+            case COMPLETED, ABORTED -> false;
         };
     }
 
     public boolean isActive() {
-        return this != ENDED;
+        return this != COMPLETED && this != ABORTED;
     }
 }
