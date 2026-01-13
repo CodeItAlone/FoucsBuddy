@@ -100,11 +100,11 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const response = await authApi.login(email, password);
-            const { token, user: userData } = response.data;
+            const { accessToken, user: userData } = response.data;
 
-            await tokenStorage.setToken(token);
+            await tokenStorage.setToken(accessToken);
             await tokenStorage.setUser(userData);
-            setAuthToken(token);
+            setAuthToken(accessToken);
             setUser(userData);
 
             return true;
@@ -124,11 +124,11 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const response = await authApi.signup(email, handle, password);
-            const { token, user: userData } = response.data;
+            const { accessToken, user: userData } = response.data;
 
-            await tokenStorage.setToken(token);
+            await tokenStorage.setToken(accessToken);
             await tokenStorage.setUser(userData);
-            setAuthToken(token);
+            setAuthToken(accessToken);
             setUser(userData);
 
             return true;
