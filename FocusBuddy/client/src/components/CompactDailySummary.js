@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { useTheme } from '../services/ThemeContext';
 
 // Mini circular progress component
@@ -8,7 +8,6 @@ function MiniProgress({ percentage, label, color, theme }) {
     const strokeWidth = 4;
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
-    const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
     return (
         <View style={styles.miniProgressContainer}>
@@ -47,7 +46,7 @@ function MiniProgress({ percentage, label, color, theme }) {
 
                 {/* Center text */}
                 <View style={styles.centerText}>
-                    <Text style={[styles.percentageText, { color }]}>{percentage}%</Text>
+                    <Text style={[styles.percentageText, { color }]}>{Math.round(percentage)}%</Text>
                 </View>
             </View>
             <Text style={[styles.labelText, { color: theme.colors.textSecondary }]}>{label}</Text>
@@ -55,16 +54,40 @@ function MiniProgress({ percentage, label, color, theme }) {
     );
 }
 
-export default function CompactDailySummary() {
+export default function CompactDailySummary({ data }) {
     const { theme } = useTheme();
     const componentStyles = createStyles(theme);
 
+    // Use data from prop if available
+    const { totalFocusMinutes = 0, totalBreakMinutes = 0 } = data || {};
+
+    // Convert to seconds for existing logic
+    const focusSeconds = totalFocusMinutes * 60;
+    const breakSeconds = totalBreakMinutes * 60;
+    const meetingSeconds = 0; // Not yet tracked
+    const otherSeconds = 0;
+    const totalSeconds = focusSeconds + breakSeconds + meetingSeconds + otherSeconds;
+    const goalSeconds = 8 * 3600; // Hardcoded daily goal for now
+
+    // Calculate percentages safely
+    const calculatePercentage = (seconds) => {
+        return totalSeconds > 0 ? (seconds / totalSeconds) * 100 : 0;
+    };
+
     const summaryData = [
-        { label: 'Focus', percentage: 62, color: theme.colors.primary },
-        { label: 'Meetings', percentage: 15, color: theme.colors.chartOrange },
-        { label: 'Breaks', percentage: 11, color: theme.colors.secondary },
-        { label: 'Other', percentage: 12, color: theme.colors.chartBlue },
+        { label: 'Focus', percentage: calculatePercentage(focusSeconds), color: theme.colors.primary },
+        { label: 'Meetings', percentage: calculatePercentage(meetingSeconds), color: theme.colors.chartOrange },
+        { label: 'Breaks', percentage: calculatePercentage(breakSeconds), color: theme.colors.secondary },
+        { label: 'Other', percentage: calculatePercentage(otherSeconds), color: theme.colors.chartBlue },
     ];
+
+    const formatTime = (seconds) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return `${h}h ${m}m`;
+    };
+
+    const goalPercentage = goalSeconds > 0 ? Math.min(100, Math.round((totalSeconds / goalSeconds) * 100)) : 0;
 
     return (
         <View style={componentStyles.container}>
@@ -92,12 +115,12 @@ export default function CompactDailySummary() {
                 {/* Summary Stats */}
                 <View style={componentStyles.statsSection}>
                     <View style={componentStyles.statItem}>
-                        <Text style={componentStyles.statValue}>6h 45m</Text>
+                        <Text style={componentStyles.statValue}>{formatTime(totalSeconds)}</Text>
                         <Text style={componentStyles.statLabel}>Total Time</Text>
                     </View>
                     <View style={componentStyles.statDivider} />
                     <View style={componentStyles.statItem}>
-                        <Text style={[componentStyles.statValue, { color: theme.colors.secondary }]}>79%</Text>
+                        <Text style={[componentStyles.statValue, { color: theme.colors.secondary }]}>{goalPercentage}%</Text>
                         <Text style={componentStyles.statLabel}>of Goal</Text>
                     </View>
                 </View>
