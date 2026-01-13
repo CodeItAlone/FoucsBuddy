@@ -5,6 +5,7 @@ import com.focusbuddy.exception.UnauthorizedException;
 import com.focusbuddy.model.DistractionLog;
 import com.focusbuddy.model.Session;
 import com.focusbuddy.model.SessionState;
+import com.focusbuddy.model.SessionType;
 import com.focusbuddy.model.User;
 import com.focusbuddy.repository.DistractionLogRepository;
 import com.focusbuddy.repository.SessionRepository;
@@ -35,7 +36,7 @@ public class SessionService {
      * Only one active session per user is allowed.
      */
     @Transactional
-    public Session startSession(Long userId, String taskDescription, int durationMinutes) {
+    public Session startSession(Long userId, String taskDescription, int durationMinutes, SessionType sessionType) {
         Optional<Session> activeSession = sessionRepository.findActiveSessionByUserId(userId);
         if (activeSession.isPresent()) {
             throw new IllegalStateException("User already has an active session");
@@ -50,6 +51,8 @@ public class SessionService {
         session.setTaskDescription(taskDescription);
         session.setPlannedDuration(durationMinutes);
         session.setStartedAt(LocalDateTime.now());
+        session.setSessionDate(java.time.LocalDate.now());
+        session.setSessionType(sessionType != null ? sessionType : SessionType.FOCUS);
 
         return sessionRepository.save(session);
     }
@@ -78,16 +81,22 @@ public class SessionService {
      * End a session (complete or abandon).
      */
     @Transactional
-    public Session endSession(Long userId, Long sessionId, String reflection) {
+    public Session endSession(Long userId, Long sessionId, String reflection, SessionState status) {
         Session session = getSessionWithOwnershipCheck(userId, sessionId);
 
         session.setReflection(reflection);
-        session.transitionTo(SessionState.ENDED);
+        SessionState targetState = (status == SessionState.ABORTED) ? SessionState.ABORTED : SessionState.COMPLETED;
+        session.transitionTo(targetState);
+
+        // Calculate and set actual duration
+        session.setActualDuration((int) session.getActualFocusSeconds());
 
         Session savedSession = sessionRepository.save(session);
 
         // Update streak on session completion
-        streakService.updateStreak(userId);
+        if (targetState == SessionState.COMPLETED) {
+            streakService.updateStreak(userId);
+        }
 
         return savedSession;
     }
@@ -130,6 +139,32 @@ public class SessionService {
      */
     public List<Session> getSessionHistory(Long userId) {
         return sessionRepository.findByUserIdOrderByStartedAtDesc(userId);
+    }
+
+    /**
+     * Get daily summary statistics.
+     */
+    public java.util.Map<String, Object> getDailySummary(Long userId, java.time.LocalDate date) {
+        Integer totalFocusSeconds = sessionRepository.sumActualDurationByUserIdAndDateAndType(
+                userId, date, SessionType.FOCUS);
+        Integer totalBreakSeconds = sessionRepository.sumActualDurationByUserIdAndDateAndType(
+                userId, date, SessionType.BREAK);
+
+        int focusTime = totalFocusSeconds != null ? totalFocusSeconds : 0;
+        int breakTime = totalBreakSeconds != null ? totalBreakSeconds : 0;
+
+        double productivity = 0.0;
+        if (focusTime + breakTime > 0) {
+            productivity = (double) focusTime / (focusTime + breakTime) * 100.0;
+        }
+
+        List<Session> sessions = sessionRepository.findAllByUserIdAndSessionDate(userId, date);
+
+        return java.util.Map.of(
+                "totalFocusMinutes", focusTime / 60,
+                "totalBreakMinutes", breakTime / 60,
+                "productivityScore", (int) productivity,
+                "sessions", sessions);
     }
 
     private Session getSessionWithOwnershipCheck(Long userId, Long sessionId) {
