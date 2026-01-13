@@ -104,7 +104,8 @@ export default function InlineSession({ onSessionChange }) {
 
         try {
             if (sessionId) {
-                await sessionApi.complete(sessionId, 'Session completed successfully.');
+                // Use new API format: end(id, reflection, status)
+                await sessionApi.end(sessionId, 'Session completed successfully.', 'COMPLETED');
             }
         } catch (err) {
             console.error('Failed to complete session:', err);
@@ -125,7 +126,8 @@ export default function InlineSession({ onSessionChange }) {
 
         try {
             if (sessionId) {
-                await sessionApi.abandon(sessionId);
+                // Use new API format: end(id, reflection, status)
+                await sessionApi.end(sessionId, null, 'ABORTED');
             }
         } catch (err) {
             console.error('Failed to abandon session:', err);
