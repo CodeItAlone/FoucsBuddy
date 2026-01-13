@@ -42,7 +42,8 @@ public class SessionController {
             @Valid @RequestBody CreateSessionRequest request) {
 
         Long userId = currentUserService.getUserId(userDetails);
-        Session session = sessionService.startSession(userId, request.task(), request.duration());
+        Session session = sessionService.startSession(userId, request.task(), request.duration(),
+                request.sessionType());
         return ResponseEntity.status(HttpStatus.CREATED).body(sessionMapper.toResponse(session));
     }
 
@@ -56,6 +57,30 @@ public class SessionController {
         Long userId = currentUserService.getUserId(userDetails);
         List<Session> sessions = sessionService.getSessionHistory(userId);
         return ResponseEntity.ok(sessionMapper.toResponseList(sessions));
+    }
+
+    /**
+     * GET /api/v1/sessions/summary?date=YYYY-MM-DD
+     */
+    @GetMapping("/summary")
+    public ResponseEntity<java.util.Map<String, Object>> getDailySummary(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(required = false) java.time.LocalDate date) {
+
+        Long userId = currentUserService.getUserId(userDetails);
+        java.time.LocalDate queryDate = date != null ? date : java.time.LocalDate.now();
+
+        java.util.Map<String, Object> summary = sessionService.getDailySummary(userId, queryDate);
+
+        // Transform inner session list to DTOs and create mutable response map
+        @SuppressWarnings("unchecked")
+        List<Session> sessions = (List<Session>) summary.get("sessions");
+        List<SessionResponse> sessionResponses = sessionMapper.toResponseList(sessions);
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>(summary);
+        response.put("sessions", sessionResponses);
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -122,7 +147,8 @@ public class SessionController {
 
         Long userId = currentUserService.getUserId(userDetails);
         String reflection = request != null ? request.reflection() : null;
-        Session session = sessionService.endSession(userId, id, reflection);
+        com.focusbuddy.model.SessionState status = request != null ? request.status() : null;
+        Session session = sessionService.endSession(userId, id, reflection, status);
         return ResponseEntity.ok(sessionMapper.toResponse(session));
     }
 
