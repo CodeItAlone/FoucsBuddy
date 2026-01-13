@@ -40,6 +40,10 @@ public class Session {
     @Column(nullable = false, length = 100)
     private String taskDescription;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private SessionType sessionType = SessionType.FOCUS;
+
     @Column(nullable = false)
     private int plannedDuration;
 
@@ -52,6 +56,15 @@ public class Session {
 
     @Column(nullable = false)
     private int totalPausedSeconds = 0;
+
+    /**
+     * persistent field for analytics queries
+     */
+    @Column(columnDefinition = "integer default 0")
+    private int actualDuration;
+
+    @Column(name = "session_date")
+    private java.time.LocalDate sessionDate;
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
@@ -94,7 +107,7 @@ public class Session {
                 resumedAt = now;
                 pausedAt = null;
             }
-            case ENDED -> {
+            case COMPLETED, ABORTED -> {
                 if (pausedAt != null) {
                     totalPausedSeconds += (int) Duration.between(pausedAt, now).getSeconds();
                 }
