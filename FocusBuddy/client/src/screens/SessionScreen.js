@@ -56,7 +56,7 @@ export default function SessionScreen({ navigation, route }) {
 
     const handleComplete = async () => {
         try {
-            await sessionApi.complete(sessionId, "Session completed successfully.");
+            await sessionApi.end(sessionId, "Session completed successfully.", "COMPLETED");
             Alert.alert("Session Complete", "Great work! Your streak has been updated.");
             navigation.goBack();
         } catch (e) {
@@ -75,7 +75,7 @@ export default function SessionScreen({ navigation, route }) {
         const doAbandon = async () => {
             if (sessionId) {
                 try {
-                    await sessionApi.abandon(sessionId);
+                    await sessionApi.end(sessionId, null, "ABORTED");
                 } catch (e) {
                     console.error("Abandon API failed", e);
                 }
