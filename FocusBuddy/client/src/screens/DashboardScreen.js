@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,9 +8,11 @@ import {
     useWindowDimensions,
     Platform
 } from 'react-native';
+import { sessionApi } from '../services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../services/ThemeContext';
 import { useAuth } from '../services/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 import Sidebar from '../components/Sidebar';
 import InlineSession from '../components/InlineSession';
 import QuickActionHeader from '../components/QuickActionHeader';
@@ -39,6 +41,29 @@ export default function DashboardScreen({ navigation }) {
     const [sessionTaskName, setSessionTaskName] = useState('');
     const [showSetupForm, setShowSetupForm] = useState(false);
 
+    // Data state
+    const [dailyData, setDailyData] = useState(null);
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    const fetchDailyData = useCallback(async () => {
+        try {
+            const response = await sessionApi.getDailySummary();
+            setDailyData(response.data);
+        } catch (error) {
+            console.error('Failed to fetch daily summary:', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchDailyData();
+    }, [refreshKey, fetchDailyData]);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchDailyData();
+        }, [fetchDailyData])
+    );
+
 
 
     const inlineSessionRef = useRef(null);
@@ -54,6 +79,8 @@ export default function DashboardScreen({ navigation }) {
         console.log('Nav item pressed:', itemId);
     };
 
+
+
     const handleSessionChange = useCallback((status, data) => {
         console.log('Session status:', status, data);
         if (status === 'active') {
@@ -62,6 +89,7 @@ export default function DashboardScreen({ navigation }) {
         } else if (status === 'ended' || status === 'completed') {
             setIsSessionActive(false);
             setSessionTaskName('');
+            setRefreshKey(prev => prev + 1);
         }
     }, []);
 
@@ -147,11 +175,11 @@ export default function DashboardScreen({ navigation }) {
                     />
 
                     {/* Compact Daily Summary */}
-                    <CompactDailySummary />
+                    <CompactDailySummary data={dailyData} />
 
                     {/* Activity Timeline */}
                     <GlassmorphismCard style={styles.timelineCard}>
-                        <InteractiveTimeline />
+                        <InteractiveTimeline sessions={dailyData?.sessions} />
                     </GlassmorphismCard>
 
                     {/* Heatmap and Leaderboard Grid */}
