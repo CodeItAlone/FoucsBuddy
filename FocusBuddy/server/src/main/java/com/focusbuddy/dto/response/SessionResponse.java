@@ -8,8 +8,10 @@ public record SessionResponse(
                 String status,
                 String taskDescription,
                 int plannedDuration,
+                int actualDuration,
                 LocalDateTime startedAt,
                 LocalDateTime endedAt,
                 String reflection,
+                String sessionType,
                 List<DistractionLogResponse> distractionLogs) {
 }
