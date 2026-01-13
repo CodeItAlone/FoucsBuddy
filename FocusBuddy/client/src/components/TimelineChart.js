@@ -2,24 +2,43 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useTheme } from '../services/ThemeContext';
 
-// Enhanced activity data
-const activities = [
-    { start: 9, duration: 0.75, type: 'focus', task: 'Deep Work - API' },
-    { start: 10, duration: 1.5, type: 'focus', task: 'Code Review' },
-    { start: 12, duration: 0.5, type: 'break', task: 'Lunch' },
-    { start: 13, duration: 2, type: 'focus', task: 'UI Implementation' },
-    { start: 15.5, duration: 0.5, type: 'meeting', task: 'Team Standup' },
-    { start: 16, duration: 1.5, type: 'focus', task: 'Bug Fixes' },
-    { start: 18, duration: 0.5, type: 'break', task: 'Coffee Break' },
-    { start: 18.5, duration: 1, type: 'focus', task: 'Documentation' },
-];
+// Helper to transform backend session data to chart format
+const transformSessionsToActivities = (sessions) => {
+    if (!sessions) return [];
+
+    return sessions.map(session => {
+        const startDate = new Date(session.startedAt);
+        const startHour = startDate.getHours() + (startDate.getMinutes() / 60);
+
+        // duration in seconds -> hours
+        // If session is active (no actualDuration yet), we might want to show planned duration or time elapsed
+        // but backend returns actualDuration which is 0 if not ended.
+        // For simplicity, let's look at plannedDuration if actual is 0 (or undefined) AND status is not ENDED?
+        // Actually, for history, we want completed sessions. 
+        // If session is ended, actualDuration > 0 usually.
+
+        // Let's assume actualDuration is populated for ended sessions.
+        // The service logic sets actualDuration on END.
+
+        const durationHours = (session.actualDuration || 0) / 3600;
+
+        return {
+            start: startHour,
+            duration: Math.max(durationHours, 0.1), // Minimum width
+            type: session.sessionType?.toLowerCase() || 'focus',
+            task: session.taskDescription || 'Session'
+        };
+    });
+};
 
 const timeLabels = ['9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 
-export default function InteractiveTimeline({ currentTime = 19.5 }) {
+export default function InteractiveTimeline({ currentTime = new Date().getHours() + new Date().getMinutes() / 60, sessions }) {
     const { theme } = useTheme();
     const [hoveredActivity, setHoveredActivity] = useState(null);
     const styles = createStyles(theme);
+
+    const activities = React.useMemo(() => transformSessionsToActivities(sessions), [sessions]);
 
     const startHour = 9;
     const endHour = 20;
@@ -43,6 +62,47 @@ export default function InteractiveTimeline({ currentTime = 19.5 }) {
         return {
             boxShadow: `0 0 12px ${color}80`,
         };
+    };
+
+    // Compute stats from sessions data
+    const computeStats = React.useMemo(() => {
+        if (!sessions || sessions.length === 0) {
+            return { focusTime: 0, breakTime: 0, meetingTime: 0, productivity: 0 };
+        }
+
+        let focusSeconds = 0;
+        let breakSeconds = 0;
+        let meetingSeconds = 0;
+
+        sessions.forEach(session => {
+            const duration = session.actualDuration || 0;
+            const type = (session.sessionType || '').toLowerCase();
+
+            if (type === 'focus') {
+                focusSeconds += duration;
+            } else if (type === 'break') {
+                breakSeconds += duration;
+            } else if (type === 'meeting') {
+                meetingSeconds += duration;
+            }
+        });
+
+        const totalActive = focusSeconds + breakSeconds + meetingSeconds;
+        const productivity = totalActive > 0 ? Math.round((focusSeconds / totalActive) * 100) : 0;
+
+        return { focusSeconds, breakSeconds, meetingSeconds, productivity };
+    }, [sessions]);
+
+    const formatDuration = (seconds) => {
+        if (!seconds || isNaN(seconds) || seconds <= 0) {
+            return '0m';
+        }
+        const hours = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        if (hours > 0) {
+            return `${hours}h ${mins}m`;
+        }
+        return `${mins}m`;
     };
 
     return (
@@ -126,19 +186,19 @@ export default function InteractiveTimeline({ currentTime = 19.5 }) {
             {/* Stats bar */}
             <View style={styles.statsBar}>
                 <View style={styles.statItem}>
-                    <Text style={styles.statValue}>6h 45m</Text>
+                    <Text style={styles.statValue}>{formatDuration(computeStats.focusSeconds)}</Text>
                     <Text style={styles.statLabel}>Focus Time</Text>
                 </View>
                 <View style={styles.statItem}>
-                    <Text style={styles.statValue}>1h 00m</Text>
+                    <Text style={styles.statValue}>{formatDuration(computeStats.breakSeconds)}</Text>
                     <Text style={styles.statLabel}>Breaks</Text>
                 </View>
                 <View style={styles.statItem}>
-                    <Text style={styles.statValue}>30m</Text>
+                    <Text style={styles.statValue}>{formatDuration(computeStats.meetingSeconds)}</Text>
                     <Text style={styles.statLabel}>Meetings</Text>
                 </View>
                 <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: theme.colors.secondary }]}>82%</Text>
+                    <Text style={[styles.statValue, { color: theme.colors.secondary }]}>{computeStats.productivity}%</Text>
                     <Text style={styles.statLabel}>Productivity</Text>
                 </View>
             </View>
