@@ -48,13 +48,13 @@ public class ProductivityService {
                                 userId, startDateTime, endDateTime);
 
                 long totalFocusSeconds = sessions.stream()
-                                .filter(s -> s.getStatus() == SessionState.ENDED)
+                                .filter(s -> s.getStatus() == SessionState.COMPLETED)
                                 .mapToLong(Session::getActualFocusSeconds)
                                 .sum();
 
                 int totalSessions = sessions.size();
                 int completedSessions = (int) sessions.stream()
-                                .filter(s -> s.getStatus() == SessionState.ENDED)
+                                .filter(s -> s.getStatus() == SessionState.COMPLETED)
                                 .count();
 
                 double completionRate = totalSessions > 0
@@ -70,7 +70,7 @@ public class ProductivityService {
 
                 // Focus consistency: % of days in range with at least one completed session
                 long daysWithFocus = sessions.stream()
-                                .filter(s -> s.getStatus() == SessionState.ENDED)
+                                .filter(s -> s.getStatus() == SessionState.COMPLETED)
                                 .map(s -> s.getStartedAt().toLocalDate())
                                 .distinct()
                                 .count();
