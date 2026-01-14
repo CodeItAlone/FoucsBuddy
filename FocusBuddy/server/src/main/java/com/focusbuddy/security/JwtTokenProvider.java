@@ -77,13 +77,15 @@ public class JwtTokenProvider {
                     .parseSignedClaims(token);
             return true;
         } catch (MalformedJwtException e) {
-            // Invalid JWT token
+            System.out.println("JWT VALIDATION FAILED: Malformed token");
         } catch (ExpiredJwtException e) {
-            // JWT token is expired
+            System.out.println("JWT VALIDATION FAILED: Token expired");
         } catch (UnsupportedJwtException e) {
-            // JWT token is unsupported
+            System.out.println("JWT VALIDATION FAILED: Unsupported token");
         } catch (IllegalArgumentException e) {
-            // JWT claims string is empty
+            System.out.println("JWT VALIDATION FAILED: Empty claims");
+        } catch (Exception e) {
+            System.out.println("JWT VALIDATION FAILED: " + e.getMessage());
         }
         return false;
     }
