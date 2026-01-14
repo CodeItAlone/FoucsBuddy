@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Image } from 'react-native';
 import { useTheme } from '../services/ThemeContext';
 import { useAuth } from '../services/AuthContext';
 
@@ -41,9 +41,11 @@ export default function Sidebar({ activeItem = 'dashboard', onItemPress, isColla
         <View style={styles.container}>
             {/* Logo */}
             <View style={styles.logoContainer}>
-                <View style={styles.logoIcon}>
-                    <Text style={styles.logoText}>⚡</Text>
-                </View>
+                <Image
+                    source={require('../../assets/logo.png')}
+                    style={styles.logoIcon}
+                    resizeMode="contain"
+                />
                 {!isCollapsed && <Text style={styles.brandName}>FocusBuddy</Text>}
             </View>
 
@@ -96,15 +98,8 @@ const createStyles = (theme) => StyleSheet.create({
         paddingHorizontal: theme.spacing.s,
     },
     logoIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: theme.borderRadius.m,
-        backgroundColor: theme.colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    logoText: {
-        fontSize: 18,
+        width: 40,
+        height: 40,
     },
     brandName: {
         marginLeft: theme.spacing.m,

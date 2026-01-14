@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, Image } from 'react-native';
 import { useTheme } from '../services/ThemeContext';
 
 export default function QuickActionHeader({
@@ -26,7 +26,11 @@ export default function QuickActionHeader({
         <View style={styles.container}>
             {/* Left: Brand */}
             <View style={styles.brandSection}>
-                <Text style={styles.brandIcon}>🔥</Text>
+                <Image
+                    source={require('../../assets/logo.png')}
+                    style={styles.brandIcon}
+                    resizeMode="contain"
+                />
                 <Text style={styles.brandName}>FocusBuddy</Text>
             </View>
 
@@ -91,7 +95,8 @@ const createStyles = (theme, isCompact) => StyleSheet.create({
         alignItems: 'center',
     },
     brandIcon: {
-        fontSize: 24,
+        width: 32,
+        height: 32,
         marginRight: theme.spacing.s,
     },
     brandName: {

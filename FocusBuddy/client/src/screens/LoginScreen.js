@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../services/ThemeContext';
 import { useAuth } from '../services/AuthContext';
@@ -26,7 +26,11 @@ export default function LoginScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
-                <Text style={styles.title}>FocusBuddy</Text>
+                <Image
+                    source={require('../../assets/logo.png')}
+                    style={styles.logo}
+                    resizeMode="contain"
+                />
                 <Text style={styles.subtitle}>EXECUTION PROTOCOL</Text>
 
                 {error && <Text style={styles.errorText}>{error}</Text>}
@@ -73,9 +77,10 @@ const createStyles = (theme) => StyleSheet.create({
         maxWidth: 400,
         alignSelf: 'center',
     },
-    title: {
-        ...theme.typography.header,
-        textAlign: 'center',
+    logo: {
+        width: 150,
+        height: 150,
+        alignSelf: 'center',
         marginBottom: theme.spacing.s,
     },
     subtitle: {
