@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
@@ -25,8 +26,9 @@ import java.util.List;
  * Session lifecycle: STARTED → PAUSED → RESUMED → ENDED
  */
 @RestController
-@RequestMapping("/api/v1/sessions")
+@RequestMapping("/api/sessions")
 @RequiredArgsConstructor
+@Slf4j
 public class SessionController {
 
     private final SessionService sessionService;
@@ -34,12 +36,13 @@ public class SessionController {
     private final CurrentUserService currentUserService;
 
     /**
-     * POST /api/v1/sessions - Start a new focus session
+     * POST /api/sessions/start - Start a new focus session
      */
-    @PostMapping
+    @PostMapping("/start")
     public ResponseEntity<SessionResponse> startSession(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateSessionRequest request) {
+        log.info("START SESSION CONTROLLER HIT: user={}, task={}", userDetails.getUsername(), request.task());
 
         Long userId = currentUserService.getUserId(userDetails);
         Session session = sessionService.startSession(userId, request.task(), request.duration(),
