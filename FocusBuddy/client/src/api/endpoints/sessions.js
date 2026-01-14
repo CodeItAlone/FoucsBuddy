@@ -1,10 +1,24 @@
-import apiClient from '../client';
+import apiClient, { getAuthToken } from '../client';
 
 export const sessionApi = {
-    // POST /sessions - Create/start a new focus session
-    // Note: Backend expects { task, duration, sessionType }
-    start: (task, duration, sessionType = 'FOCUS') =>
-        apiClient.post('/sessions', { task, duration, sessionType }),
+    // POST /api/sessions/start - Start a new focus session
+    // NOTE: Overriding baseURL to point to /api/sessions/start (skipping /v1)
+    start: (task, duration, sessionType = 'FOCUS') => {
+        // Construct the correct base URL depending on environment
+        const useLocal = apiClient.defaults.baseURL.includes('localhost');
+        const apiRoot = useLocal ? 'http://localhost:8080/api' : 'http://10.0.2.2:8080/api';
+
+        // DEBUG: Log token status
+        const token = getAuthToken();
+        console.log('SESSION START: Token available:', !!token);
+        console.log('SESSION START: Token prefix:', token ? token.substring(0, 20) + '...' : 'null');
+        console.log('SESSION START: Request URL:', apiRoot + '/sessions/start');
+
+        return apiClient.post('/sessions/start',
+            { task, duration, sessionType },
+            { baseURL: apiRoot } // Override baseURL to remove /v1
+        );
+    },
 
     // Alias for backwards compatibility
     create: (task, duration) => apiClient.post('/sessions', { task, duration, sessionType: 'FOCUS' }),

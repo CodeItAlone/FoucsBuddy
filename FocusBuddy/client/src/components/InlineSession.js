@@ -84,19 +84,26 @@ export default function InlineSession({ onSessionChange }) {
         setError('');
 
         try {
-            const response = await sessionApi.start(taskName.trim(), selectedDuration);
-            setSessionId(response.data.id);
-        } catch (err) {
-            console.warn('Backend API failed, starting local session:', err);
-            // Continue with local timer even if API fails
-            setSessionId('local-' + Date.now());
-        }
+            console.log('Initiating backend session start...');
+            console.log('Payload:', { task: taskName.trim(), duration: selectedDuration });
 
-        // Always start the timer regardless of API success
-        setTimeLeft(selectedDuration * 60);
-        setPhase('active');
-        onSessionChange?.('active');
-        setIsLoading(false);
+            // CRITICAL: Call backend and wait for success
+            const response = await sessionApi.start(taskName.trim(), selectedDuration);
+
+            console.log('Backend response success:', response.status, response.data);
+            setSessionId(response.data.id);
+
+            // ONLY start timer if backend succeeds
+            setTimeLeft(selectedDuration * 60);
+            setPhase('active');
+            onSessionChange?.('active');
+        } catch (err) {
+            console.error('Backend API failed to start session:', err);
+            // DO NOT start local timer on failure
+            setError(err.response?.data?.message || 'Failed to start session. Check network connection.');
+        } finally {
+            setIsLoading(false);
+        }
     }, [taskName, selectedDuration, onSessionChange]);
 
     const handleComplete = useCallback(async () => {
