@@ -11,6 +11,7 @@ import com.focusbuddy.repository.DistractionLogRepository;
 import com.focusbuddy.repository.SessionRepository;
 import com.focusbuddy.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ import java.util.Optional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SessionService {
 
     private final SessionRepository sessionRepository;
@@ -37,6 +39,7 @@ public class SessionService {
      */
     @Transactional
     public Session startSession(Long userId, String taskDescription, int durationMinutes, SessionType sessionType) {
+        log.debug("Starting session for user: {}, task: {}", userId, taskDescription);
         Optional<Session> activeSession = sessionRepository.findActiveSessionByUserId(userId);
         if (activeSession.isPresent()) {
             throw new IllegalStateException("User already has an active session");
@@ -54,7 +57,12 @@ public class SessionService {
         session.setSessionDate(java.time.LocalDate.now());
         session.setSessionType(sessionType != null ? sessionType : SessionType.FOCUS);
 
-        return sessionRepository.save(session);
+        Session savedSession = sessionRepository.save(session);
+        // Force flush to ensure persistence immediately (helpful for testing/debugging)
+        sessionRepository.flush();
+        log.debug("Session started and saved with ID: {}", savedSession.getId());
+
+        return savedSession;
     }
 
     /**
@@ -82,6 +90,7 @@ public class SessionService {
      */
     @Transactional
     public Session endSession(Long userId, Long sessionId, String reflection, SessionState status) {
+        log.debug("Ending session {} for user {}", sessionId, userId);
         Session session = getSessionWithOwnershipCheck(userId, sessionId);
 
         session.setReflection(reflection);
@@ -92,6 +101,9 @@ public class SessionService {
         session.setActualDuration((int) session.getActualFocusSeconds());
 
         Session savedSession = sessionRepository.save(session);
+        sessionRepository.flush();
+        log.debug("Session ended and saved with ID: {}. Actual duration: {}", savedSession.getId(),
+                savedSession.getActualDuration());
 
         // Update streak on session completion
         if (targetState == SessionState.COMPLETED) {

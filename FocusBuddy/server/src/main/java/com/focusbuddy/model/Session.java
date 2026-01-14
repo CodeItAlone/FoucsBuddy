@@ -37,24 +37,29 @@ public class Session {
     @Column(nullable = false, length = 20)
     private SessionState status = SessionState.STARTED;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "task_description", nullable = false, length = 100)
     private String taskDescription;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "session_type", nullable = false, length = 20)
     private SessionType sessionType = SessionType.FOCUS;
 
-    @Column(nullable = false)
+    @Column(name = "planned_duration", nullable = false)
     private int plannedDuration;
 
-    @Column(nullable = false)
+    @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
+    @Column(name = "paused_at")
     private LocalDateTime pausedAt;
+
+    @Column(name = "resumed_at")
     private LocalDateTime resumedAt;
+
+    @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
-    @Column(nullable = false)
+    @Column(name = "total_paused_seconds", nullable = false)
     private int totalPausedSeconds = 0;
 
     /**
